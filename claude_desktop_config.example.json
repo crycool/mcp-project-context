@@ -1,0 +1,12 @@
+{
+  "mcpServers": {
+    "project-context": {
+      "command": "node",
+      "args": ["C:\\mcp-project-context\\dist\\index.js"],
+      "cwd": "C:\\your-project-path",
+      "env": {
+        "NODE_ENV": "production"
+      }
+    }
+  }
+}

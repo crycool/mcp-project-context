@@ -1,0 +1,47 @@
+{
+  "name": "mcp-project-context",
+  "version": "1.0.0",
+  "description": "MCP Server for Claude Desktop project context management",
+  "main": "dist/index.js",
+  "type": "module",
+  "bin": {
+    "mcp-project-context": "dist/index.js"
+  },
+  "scripts": {
+    "build": "tsc",
+    "dev": "tsx watch src/index.ts",
+    "start": "node dist/index.js",
+    "test": "jest",
+    "quickstart": "node quickstart.js",
+    "postinstall": "node quickstart.js"
+  },
+  "keywords": [
+    "mcp",
+    "claude",
+    "ai",
+    "assistant",
+    "project",
+    "context"
+  ],
+  "author": "",
+  "license": "MIT",
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.0.5",
+    "chokidar": "^4.0.1",
+    "simple-git": "^3.27.0",
+    "glob": "^11.0.0",
+    "ignore": "^6.0.2",
+    "mime-types": "^2.1.35",
+    "minimatch": "^10.0.1",
+    "js-yaml": "^4.1.0"
+  },
+  "devDependencies": {
+    "@types/node": "^22.10.5",
+    "@types/mime-types": "^2.1.4",
+    "@types/js-yaml": "^4.0.9",
+    "typescript": "^5.7.3",
+    "tsx": "^4.19.2",
+    "@types/jest": "^29.5.14",
+    "jest": "^29.7.0"
+  }
+}
