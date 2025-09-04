@@ -1,9 +1,9 @@
 import { Server } from '@modelcontextprotocol/sdk/server/index.js';
 import {
   ListResourcesRequestSchema,
-  ReadResourceRequestSchema,
-  ResourceSchema
+  ReadResourceRequestSchema
 } from '@modelcontextprotocol/sdk/types.js';
+import type { Resource } from '@modelcontextprotocol/sdk/types.js';
 import { ContextManager } from '../context/contextManager.js';
 import { FileHandler } from './fileHandler.js';
 import * as path from 'path';
@@ -34,9 +34,9 @@ export class ResourceHandler {
       return await this.handleResourceRead(request.params.uri);
     });
   }
-  private getResourceList(): ResourceSchema[] {
+  private getResourceList(): Resource[] {
     const projectInfo = this.contextManager.getProjectInfo();
-    const resources: ResourceSchema[] = [];
+    const resources: Resource[] = [];
     
     // Add project overview resource
     resources.push({

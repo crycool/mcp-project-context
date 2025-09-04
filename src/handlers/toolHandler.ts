@@ -1,9 +1,9 @@
 import { Server } from '@modelcontextprotocol/sdk/server/index.js';
 import {
   CallToolRequestSchema,
-  ListToolsRequestSchema,
-  ToolSchema
+  ListToolsRequestSchema
 } from '@modelcontextprotocol/sdk/types.js';
+import type { Tool } from '@modelcontextprotocol/sdk/types.js';
 import { ContextManager } from '../context/contextManager.js';
 import { FileHandler } from './fileHandler.js';
 import { GitHandler } from './gitHandler.js';
@@ -41,7 +41,7 @@ export class ToolHandler {
     });
   }
 
-  private getToolDefinitions(): ToolSchema[] {
+  private getToolDefinitions(): Tool[] {
     return [
       {
         name: 'read_file',

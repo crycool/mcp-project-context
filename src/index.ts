@@ -14,25 +14,37 @@ class MCPProjectContextServer {
   private server: Server;
   private projectDiscovery: ProjectDiscovery;
   private memoryManager: MemoryManager;
-  private contextManager: ContextManager;
-  private fileHandler: FileHandler;
-  private gitHandler: GitHandler;
-  private toolHandler: ToolHandler;
-  private resourceHandler: ResourceHandler;
-  private promptHandler: PromptHandler;
+  private contextManager!: ContextManager;
+  private fileHandler!: FileHandler;
+  private gitHandler!: GitHandler;
+  private toolHandler!: ToolHandler;
+  private resourceHandler!: ResourceHandler;
+  private promptHandler!: PromptHandler;
   private currentWorkingDirectory: string;
   constructor() {
     this.currentWorkingDirectory = process.cwd();
     this.projectDiscovery = new ProjectDiscovery(this.currentWorkingDirectory);
     this.memoryManager = new MemoryManager();
-    this.contextManager = new ContextManager(this.memoryManager, this.projectDiscovery);
-    this.fileHandler = new FileHandler(this.contextManager);
-    this.gitHandler = new GitHandler(this.contextManager);
+    // ContextManager ve handlers initialize() metodunda yaratılacak
     
     this.server = new Server(
       { name: 'mcp-project-context', version: '1.0.0' },
       { capabilities: { tools: {}, resources: {}, prompts: {} } }
     );
+  }
+  async initialize() {
+    console.error('MCP Project Context Server initializing...');
+    
+    // Discover project structure
+    await this.projectDiscovery.discover();
+    
+    // Load project memory
+    await this.memoryManager.initialize(this.projectDiscovery.getProjectId());
+    
+    // Şimdi ContextManager ve handler'ları yaratabiliz çünkü project info mevcut
+    this.contextManager = new ContextManager(this.memoryManager, this.projectDiscovery);
+    this.fileHandler = new FileHandler(this.contextManager);
+    this.gitHandler = new GitHandler(this.contextManager);
     
     this.toolHandler = new ToolHandler(
       this.server,
@@ -52,15 +64,6 @@ class MCPProjectContextServer {
       this.server,
       this.contextManager
     );
-  }
-  async initialize() {
-    console.error('MCP Project Context Server initializing...');
-    
-    // Discover project structure
-    await this.projectDiscovery.discover();
-    
-    // Load project memory
-    await this.memoryManager.initialize(this.projectDiscovery.getProjectId());
     
     // Initialize context
     await this.contextManager.initialize();

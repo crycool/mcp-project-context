@@ -1,4 +1,4 @@
-import simpleGit, { SimpleGit, StatusResult } from 'simple-git';
+import { simpleGit, SimpleGit, StatusResult } from 'simple-git';
 import { ContextManager } from '../context/contextManager.js';
 
 export class GitHandler {

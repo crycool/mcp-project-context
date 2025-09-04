@@ -2,7 +2,7 @@ import * as fs from 'fs/promises';
 import * as path from 'path';
 import { glob } from 'glob';
 import ignore from 'ignore';
-import simpleGit, { SimpleGit } from 'simple-git';
+import { simpleGit, SimpleGit } from 'simple-git';
 import { createHash } from 'crypto';
 
 export interface ProjectInfo {
@@ -79,7 +79,9 @@ export class ProjectDiscovery {
     return this.projectInfo;
   }
   private async loadGitignore() {
-    this.ignorer = ignore();
+    // Handle ES module default export
+    const ignoreFactory = (ignore as any).default || ignore;
+    this.ignorer = ignoreFactory();
     this.ignorer.add([
       'node_modules/',
       '.git/',

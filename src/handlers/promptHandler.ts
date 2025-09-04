@@ -2,9 +2,9 @@ import { Server } from '@modelcontextprotocol/sdk/server/index.js';
 import {
   ListPromptsRequestSchema,
   GetPromptRequestSchema,
-  PromptSchema,
   PromptMessage
 } from '@modelcontextprotocol/sdk/types.js';
+import type { Prompt } from '@modelcontextprotocol/sdk/types.js';
 import { ContextManager } from '../context/contextManager.js';
 
 export class PromptHandler {
@@ -28,7 +28,7 @@ export class PromptHandler {
     });
   }
 
-  private getPromptDefinitions(): PromptSchema[] {
+  private getPromptDefinitions(): Prompt[] {
     return [
       {
         name: 'project_context',

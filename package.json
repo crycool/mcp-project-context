@@ -12,8 +12,8 @@
     "dev": "tsx watch src/index.ts",
     "start": "node dist/index.js",
     "test": "jest",
-    "quickstart": "node quickstart.js",
-    "postinstall": "node quickstart.js"
+    "quickstart": "node quickstart.cjs",
+    "postinstall": "node quickstart.cjs"
   },
   "keywords": [
     "mcp",
