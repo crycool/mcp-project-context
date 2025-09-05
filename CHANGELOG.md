@@ -5,6 +5,25 @@ All notable changes to MCP Project Context Manager will be documented in this fi
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.1.0] - 2025-01-09
+
+### Added
+- **read_multiple_files tool**: Parallel reading of multiple files with error handling
+- **edit_file tool**: Surgical text replacement with validation and similarity detection
+- **search_code tool**: Advanced code search with regex, glob patterns, and context lines
+- **search_symbols tool**: Find function, class, and variable definitions across languages
+- **search_todos tool**: Locate TODO, FIXME, and other comment markers
+- CodeSearcher class with professional-grade search capabilities
+- Levenshtein distance algorithm for similarity detection in edit operations
+- Gitignore respect in search operations
+- Binary file filtering in search
+- Search result caching for performance optimization
+
+### Enhanced
+- FileHandler with new search and edit capabilities
+- ToolHandler with comprehensive search tool implementations
+- Documentation with detailed usage examples for new tools
+
 ## [1.0.0] - 2024-01-01
 
 ### Added

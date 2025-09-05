@@ -4,6 +4,7 @@ import {
   ListToolsRequestSchema
 } from '@modelcontextprotocol/sdk/types.js';
 import type { Tool } from '@modelcontextprotocol/sdk/types.js';
+import * as path from 'path';
 import { ContextManager } from '../context/contextManager.js';
 import { FileHandler } from './fileHandler.js';
 import { GitHandler } from './gitHandler.js';
@@ -141,6 +142,52 @@ export class ToolHandler {
             }
           },
           required: ['path', 'old_content', 'new_content']
+        }
+      },
+      {
+        name: 'search_code',
+        description: 'Search for code patterns in project files with advanced filtering and context',
+        inputSchema: {
+          type: 'object',
+          properties: {
+            pattern: { type: 'string', description: 'Search pattern (text or regex)' },
+            directory: { type: 'string', description: 'Directory to search in (default: project root)' },
+            filePattern: { type: 'string', description: 'File glob pattern (e.g., "*.ts", "**/*.js")' },
+            excludePatterns: { 
+              type: 'array', 
+              items: { type: 'string' },
+              description: 'Patterns to exclude from search'
+            },
+            caseSensitive: { type: 'boolean', description: 'Case sensitive search', default: false },
+            regex: { type: 'boolean', description: 'Treat pattern as regex', default: false },
+            contextLines: { type: 'number', description: 'Number of context lines around matches', default: 2 },
+            maxResults: { type: 'number', description: 'Maximum results to return', default: 100 },
+            includeHidden: { type: 'boolean', description: 'Include hidden files', default: false },
+            followSymlinks: { type: 'boolean', description: 'Follow symbolic links', default: false }
+          },
+          required: ['pattern']
+        }
+      },
+      {
+        name: 'search_symbols',
+        description: 'Search for symbol definitions (functions, classes, variables)',
+        inputSchema: {
+          type: 'object',
+          properties: {
+            symbolName: { type: 'string', description: 'Symbol name to search for' },
+            filePattern: { type: 'string', description: 'File pattern to search in (default: common code files)' }
+          },
+          required: ['symbolName']
+        }
+      },
+      {
+        name: 'search_todos',
+        description: 'Search for TODO/FIXME/NOTE comments in code',
+        inputSchema: {
+          type: 'object',
+          properties: {
+            includeNotes: { type: 'boolean', description: 'Include NOTE/INFO/WARNING comments', default: false }
+          }
         }
       },      {
         name: 'git_status',
@@ -310,25 +357,25 @@ export class ToolHandler {
           const successfulReads = filesContent.filter(f => f.content !== null);
           const failedReads = filesContent.filter(f => f.content === null);
           
-          let resultText = '';
+          let readResultText = '';
           
           // Add successful reads
           if (successfulReads.length > 0) {
-            resultText += '=== Successfully read files ===\n\n';
+            readResultText += '=== Successfully read files ===\n\n';
             for (const file of successfulReads) {
-              resultText += `File: ${file.path}\n`;
-              resultText += '---\n';
-              resultText += file.content;
-              resultText += '\n\n';
+              readResultText += `File: ${file.path}\n`;
+              readResultText += '---\n';
+              readResultText += file.content;
+              readResultText += '\n\n';
             }
           }
           
           // Add failed reads
           if (failedReads.length > 0) {
-            resultText += '=== Failed to read files ===\n\n';
+            readResultText += '=== Failed to read files ===\n\n';
             for (const file of failedReads) {
-              resultText += `File: ${file.path}\n`;
-              resultText += `Error: ${file.error}\n\n`;
+              readResultText += `File: ${file.path}\n`;
+              readResultText += `Error: ${file.error}\n\n`;
             }
           }
           
@@ -336,7 +383,7 @@ export class ToolHandler {
             content: [
               {
                 type: 'text',
-                text: resultText || 'No files to read'
+                text: readResultText || 'No files to read'
               }
             ]
           };
@@ -359,6 +406,143 @@ export class ToolHandler {
               }
             ],
             isError: !editResult.success
+          };
+        
+        case 'search_code':
+          const projectInfo = this.contextManager.getProjectInfo();
+          const searchOptions = {
+            pattern: args.pattern,
+            directory: args.directory || projectInfo?.root || process.cwd(),
+            filePattern: args.filePattern,
+            excludePatterns: args.excludePatterns,
+            caseSensitive: args.caseSensitive || false,
+            regex: args.regex || false,
+            contextLines: args.contextLines ?? 2,
+            maxResults: args.maxResults || 100,
+            includeHidden: args.includeHidden || false,
+            followSymlinks: args.followSymlinks || false
+          };
+          
+          const searchResults = await this.fileHandler.searchCode(searchOptions);
+          
+          // Format results for display
+          let searchResultText = `🔍 Search Results\n`;
+          searchResultText += `━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n`;
+          searchResultText += `Pattern: "${args.pattern}"${args.regex ? ' (regex)' : ''}\n`;
+          searchResultText += `Files searched: ${searchResults.totalFiles}\n`;
+          searchResultText += `Files with matches: ${searchResults.matchedFiles}\n`;
+          searchResultText += `Total matches: ${searchResults.totalMatches}\n`;
+          searchResultText += `Search time: ${searchResults.searchTime}ms\n`;
+          searchResultText += `━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n`;
+          
+          if (searchResults.results.length > 0) {
+            for (const result of searchResults.results) {
+              const relativePath = path.relative(searchOptions.directory, result.file);
+              searchResultText += `📄 ${relativePath}:${result.line}:${result.column}\n`;
+              
+              if (result.context?.before?.length) {
+                result.context.before.forEach(line => {
+                  searchResultText += `   │ ${line}\n`;
+                });
+              }
+              
+              searchResultText += ` ► │ ${result.match}\n`;
+              
+              if (result.context?.after?.length) {
+                result.context.after.forEach(line => {
+                  searchResultText += `   │ ${line}\n`;
+                });
+              }
+              
+              searchResultText += '\n';
+            }
+          } else {
+            searchResultText += 'No matches found.\n';
+          }
+          
+          return {
+            content: [
+              {
+                type: 'text',
+                text: searchResultText
+              }
+            ]
+          };
+        
+        case 'search_symbols':
+          const symbolResults = await this.fileHandler.searchSymbols(
+            args.symbolName,
+            args.filePattern
+          );
+          
+          let symbolText = `🔎 Symbol Search: "${args.symbolName}"\n`;
+          symbolText += `━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n`;
+          symbolText += `Found ${symbolResults.length} definition(s)\n\n`;
+          
+          for (const result of symbolResults) {
+            const relativePath = path.relative(process.cwd(), result.file);
+            symbolText += `📍 ${relativePath}:${result.line}\n`;
+            symbolText += `   ${result.match}\n\n`;
+          }
+          
+          return {
+            content: [
+              {
+                type: 'text',
+                text: symbolText || 'No symbols found.'
+              }
+            ]
+          };
+        
+        case 'search_todos':
+          const todoResults = await this.fileHandler.searchTodos(args.includeNotes);
+          
+          let todoText = `📝 TODO/FIXME Search\n`;
+          todoText += `━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n`;
+          todoText += `Found ${todoResults.length} item(s)\n\n`;
+          
+          const todosByType: Record<string, typeof todoResults> = {};
+          
+          for (const result of todoResults) {
+            const match = result.match.match(/\b(TODO|FIXME|XXX|HACK|BUG|NOTE|INFO|WARNING)\b/i);
+            if (match) {
+              const type = match[1].toUpperCase();
+              if (!todosByType[type]) {
+                todosByType[type] = [];
+              }
+              todosByType[type].push(result);
+            }
+          }
+          
+          for (const [type, items] of Object.entries(todosByType)) {
+            const emoji = {
+              TODO: '📌',
+              FIXME: '🔧',
+              BUG: '🐛',
+              HACK: '⚡',
+              XXX: '⚠️',
+              NOTE: '📝',
+              INFO: 'ℹ️',
+              WARNING: '⚠️'
+            }[type] || '•';
+            
+            todoText += `\n${emoji} ${type} (${items.length})\n`;
+            todoText += `${'─'.repeat(30)}\n`;
+            
+            for (const item of items) {
+              const relativePath = path.relative(process.cwd(), item.file);
+              todoText += `  ${relativePath}:${item.line}\n`;
+              todoText += `    ${item.match}\n`;
+            }
+          }
+          
+          return {
+            content: [
+              {
+                type: 'text',
+                text: todoText
+              }
+            ]
           };
         // Git operations
         case 'git_status':

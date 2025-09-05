@@ -3,14 +3,18 @@ import * as fsSync from 'fs';
 import * as path from 'path';
 import chokidar, { FSWatcher } from 'chokidar';
 import { ContextManager } from '../context/contextManager.js';
+import { CodeSearcher, SearchOptions, SearchSummary } from '../search/codeSearcher.js';
 
 export class FileHandler {
   private contextManager: ContextManager;
   private watcher: FSWatcher | null = null;
   private watchedPaths: Set<string> = new Set();
+  private codeSearcher: CodeSearcher;
 
   constructor(contextManager: ContextManager) {
     this.contextManager = contextManager;
+    const projectInfo = contextManager.getProjectInfo();
+    this.codeSearcher = new CodeSearcher(projectInfo?.root || process.cwd());
   }
 
   startWatching() {
@@ -439,5 +443,71 @@ export class FileHandler {
     }
     
     return matrix[str2.length][str1.length];
+  }
+
+  /**
+   * Search for code patterns in the project
+   * @param options Search options
+   * @returns Search summary with results
+   */
+  async searchCode(options: SearchOptions): Promise<SearchSummary> {
+    try {
+      // Update context
+      this.contextManager.updateContext('code_search', {
+        pattern: options.pattern,
+        directory: options.directory,
+        timestamp: new Date()
+      });
+
+      // Perform search
+      const results = await this.codeSearcher.searchCode(options);
+
+      // Log search metrics
+      console.error(`Code search completed: ${results.totalMatches} matches in ${results.matchedFiles} files (${results.searchTime}ms)`);
+
+      return results;
+    } catch (error) {
+      console.error('Code search error:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Search for symbol definitions (functions, classes, etc)
+   * @param symbolName Symbol name to search for
+   * @param filePattern Optional file pattern filter
+   * @returns Search results
+   */
+  async searchSymbols(symbolName: string, filePattern?: string) {
+    try {
+      this.contextManager.updateContext('symbol_search', {
+        symbol: symbolName,
+        timestamp: new Date()
+      });
+
+      return await this.codeSearcher.searchSymbols(symbolName, filePattern);
+    } catch (error) {
+      console.error('Symbol search error:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Search for TODO/FIXME comments in code
+   * @param includeNotes Include NOTE/INFO/WARNING comments
+   * @returns Search results
+   */
+  async searchTodos(includeNotes: boolean = false) {
+    try {
+      this.contextManager.updateContext('todo_search', {
+        includeNotes,
+        timestamp: new Date()
+      });
+
+      return await this.codeSearcher.searchTodos(includeNotes);
+    } catch (error) {
+      console.error('TODO search error:', error);
+      throw error;
+    }
   }
 }

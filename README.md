@@ -29,6 +29,7 @@ A Model Context Protocol (MCP) server that provides Claude Desktop with Claude C
 - File operations (read, write, create, delete, move)
 - **NEW: Read multiple files** - Read contents of multiple files at once
 - **NEW: Edit file** - Surgical text replacement with validation
+- **NEW: Search code** - Advanced code search with regex, glob patterns, and context
 - Git operations (status, diff, add, commit)
 - Context retrieval with token budget management
 - Memory search and management
@@ -134,6 +135,9 @@ This is a React application using TypeScript and Material-UI.
 - `write_file` - Write to files
 - `read_multiple_files` - **NEW:** Read multiple files at once
 - `edit_file` - **NEW:** Surgical text replacement with validation
+- `search_code` - **NEW:** Advanced pattern search in code
+- `search_symbols` - **NEW:** Find function/class definitions
+- `search_todos` - **NEW:** Find TODO/FIXME comments
 - `list_directory` - List directory contents
 - `create_directory` - Create new directories
 - `delete_file` - Delete files
@@ -288,3 +292,76 @@ Perform surgical text replacements in files:
 - Configuration updates
 - Bug fixes with precise targeting
 - Batch content updates
+
+### search_code
+
+Advanced code search with powerful filtering options:
+
+```javascript
+// Example usage
+{
+  "tool": "search_code",
+  "arguments": {
+    "pattern": "useState",
+    "filePattern": "**/*.tsx",
+    "contextLines": 3,
+    "regex": false
+  }
+}
+```
+
+**Features:**
+- **Pattern matching**: Text or regex patterns
+- **Glob file patterns**: Filter by file types (e.g., `*.ts`, `**/*.js`)
+- **Context lines**: Show surrounding code for better understanding
+- **Gitignore respect**: Automatically excludes gitignored files
+- **Binary file filtering**: Skips non-text files
+- **Performance caching**: 5-second result cache for repeated searches
+- **Exclude patterns**: Custom exclusion rules
+
+**Advanced Options:**
+- `caseSensitive`: Case-sensitive matching (default: false)
+- `regex`: Treat pattern as regular expression
+- `contextLines`: Lines of context around matches (default: 2)
+- `maxResults`: Limit number of results (default: 100)
+- `includeHidden`: Search hidden files
+- `followSymlinks`: Follow symbolic links
+
+### search_symbols
+
+Find symbol definitions across your codebase:
+
+```javascript
+{
+  "tool": "search_symbols",
+  "arguments": {
+    "symbolName": "UserService",
+    "filePattern": "**/*.ts"
+  }
+}
+```
+
+**Supports:**
+- JavaScript/TypeScript: functions, classes, variables
+- Python: functions, classes
+- Java/C#: methods, classes
+- Go: functions, structs
+- Rust: functions, structs, enums
+
+### search_todos
+
+Find TODO/FIXME comments in your code:
+
+```javascript
+{
+  "tool": "search_todos",
+  "arguments": {
+    "includeNotes": true
+  }
+}
+```
+
+**Searches for:**
+- TODO, FIXME, XXX, HACK, BUG
+- Optionally: NOTE, INFO, WARNING
+- Organized by type with file locations
