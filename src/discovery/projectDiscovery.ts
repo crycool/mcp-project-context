@@ -52,31 +52,56 @@ export class ProjectDiscovery {
   }
 
   async discover(): Promise<ProjectInfo> {
-    await this.loadGitignore();
-    
-    const projectRoot = await this.findProjectRoot();
-    const projectType = await this.detectProjectType(projectRoot);
-    const gitInfo = await this.getGitInfo();
-    const structure = await this.analyzeStructure(projectRoot);
-    const files = await this.discoverFiles(projectRoot);
-    const claudeFiles = await this.findClaudeFiles(projectRoot);
-    
-    this.projectInfo = {
-      id: this.generateProjectId(projectRoot),
-      name: path.basename(projectRoot),
-      type: projectType.type,
-      root: projectRoot,
-      language: projectType.language,
-      framework: projectType.framework,
-      buildTool: projectType.buildTool,
-      packageManager: projectType.packageManager,
-      gitInfo,
-      structure,
-      files,
-      claudeFiles
-    };
-    
-    return this.projectInfo;
+    try {
+      await this.loadGitignore();
+      
+      const projectRoot = await this.findProjectRoot();
+      console.error('Project root found:', projectRoot);
+      
+      // Safety check for project root
+      if (projectRoot === '/' || projectRoot === 'C:\\' || projectRoot.length < 3) {
+        throw new Error(`Unsafe project root detected: ${projectRoot}`);
+      }
+      
+      const projectType = await this.detectProjectType(projectRoot);
+      const gitInfo = await this.getGitInfo();
+      const structure = await this.analyzeStructure(projectRoot);
+      const files = await this.discoverFiles(projectRoot);
+      const claudeFiles = await this.findClaudeFiles(projectRoot);
+      
+      this.projectInfo = {
+        id: this.generateProjectId(projectRoot),
+        name: path.basename(projectRoot),
+        type: projectType.type,
+        root: projectRoot,
+        language: projectType.language,
+        framework: projectType.framework,
+        buildTool: projectType.buildTool,
+        packageManager: projectType.packageManager,
+        gitInfo,
+        structure,
+        files,
+        claudeFiles
+      };
+      
+      console.error(`Project discovery completed: ${this.projectInfo.name} (${this.projectInfo.type})`);
+      return this.projectInfo;
+      
+    } catch (error) {
+      console.error('Project discovery failed:', error);
+      // Create fallback project info
+      const fallbackRoot = this.workingDir || '/tmp';
+      this.projectInfo = {
+        id: this.generateProjectId(fallbackRoot),
+        name: 'fallback-project',
+        type: 'unknown',
+        root: fallbackRoot,
+        structure: { directories: [], importantDirs: [], configFiles: [] },
+        files: [],
+        claudeFiles: []
+      };
+      return this.projectInfo;
+    }
   }
   private async loadGitignore() {
     // Handle ES module default export

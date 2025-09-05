@@ -1,4 +1,5 @@
 import * as fs from 'fs/promises';
+import * as fsSync from 'fs';
 import * as path from 'path';
 import chokidar, { FSWatcher } from 'chokidar';
 import { ContextManager } from '../context/contextManager.js';
@@ -13,33 +14,88 @@ export class FileHandler {
   }
 
   startWatching() {
-    const projectRoot = this.contextManager.getProjectInfo().root;
-    
-    this.watcher = chokidar.watch(projectRoot, {
-      ignored: [
-        /(^|[\/\\])\../, // Ignore dotfiles
-        '**/node_modules/**',
-        '**/dist/**',
-        '**/build/**',
-        '**/*.log'
-      ],
-      persistent: true,
-      ignoreInitial: true,
-      depth: 5
-    });
-    
-    this.watcher
-      .on('add', (filePath) => this.handleFileAdd(filePath))
-      .on('change', (filePath) => this.handleFileChange(filePath))
-      .on('unlink', (filePath) => this.handleFileRemove(filePath));
-    
-    console.error('File watching started for:', projectRoot);
+    try {
+      const projectInfo = this.contextManager.getProjectInfo();
+      const projectRoot = projectInfo?.root;
+      
+      // Safety check: Don't watch root directory or invalid paths
+      if (!projectRoot || projectRoot === '/' || projectRoot === 'C:\\' || projectRoot.length < 5) {
+        console.error('File watching disabled - unsafe or invalid project root:', projectRoot);
+        return;
+      }
+      
+      // Additional safety: Check if path exists and is a directory
+      if (!fsSync.existsSync(projectRoot) || !fsSync.statSync(projectRoot).isDirectory()) {
+        console.error('File watching disabled - invalid project directory:', projectRoot);
+        return;
+      }
+      
+      console.error('Starting file watching for project root:', projectRoot);
+      
+      this.watcher = chokidar.watch(projectRoot, {
+        ignored: [
+          /(^|[\/\\])\../,           // Ignore dotfiles
+          '**/node_modules/**',      // Node modules
+          '**/dist/**',              // Build outputs
+          '**/build/**',             // Build outputs
+          '**/target/**',            // Java/Rust builds
+          '**/vendor/**',            // Vendor dependencies
+          '**/*.log',                // Log files
+          '**/tmp/**',               // Temp files
+          '**/.git/**',              // Git files
+          '**/coverage/**',          // Test coverage
+          '**/__pycache__/**',       // Python cache
+          '**/venv/**',              // Python virtual env
+          '**/.venv/**',             // Python virtual env
+          '**/env/**',               // Environment
+          '**/.env/**',              // Environment
+          '**/*.pyc',                // Python compiled
+          '**/*.pyo',                // Python optimized
+          '**/*.class',              // Java compiled
+          '**/*.o',                  // Object files
+          '**/*.so',                 // Shared libraries
+          '**/*.dylib',              // MacOS dynamic libraries
+          '**/*.dll'                 // Windows dynamic libraries
+        ],
+        persistent: true,
+        ignoreInitial: true,
+        depth: 10,                   // Limit depth
+        ignorePermissionErrors: true, // Ignore permission errors
+        followSymlinks: false,        // Don't follow symlinks for security
+        usePolling: false,           // Use native events
+        interval: 1000,              // Polling interval if needed
+        binaryInterval: 2000,        // Binary file polling
+        awaitWriteFinish: {          // Wait for writes to complete
+          stabilityThreshold: 100,
+          pollInterval: 100
+        }
+      });
+      
+      this.watcher
+        .on('add', (filePath) => this.handleFileAdd(filePath))
+        .on('change', (filePath) => this.handleFileChange(filePath))
+        .on('unlink', (filePath) => this.handleFileRemove(filePath))
+        .on('error', (error) => {
+          console.error('File watcher error:', error);
+          // Don't crash the server on watcher errors
+        });
+      
+      console.error('File watching started successfully for:', projectRoot);
+      
+    } catch (error) {
+      console.error('Failed to start file watching:', error);
+      // Don't crash the server if file watching fails
+    }
   }
   stopWatching() {
     if (this.watcher) {
-      this.watcher.close();
-      this.watcher = null;
-      console.error('File watching stopped');
+      try {
+        this.watcher.close();
+        this.watcher = null;
+        console.error('File watching stopped successfully');
+      } catch (error) {
+        console.error('Error stopping file watcher:', error);
+      }
     }
   }
 
