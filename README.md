@@ -132,9 +132,15 @@ This is a React application using TypeScript and Material-UI.
 ### Tools (via Claude)
 - `read_file` - Read file contents
 - `write_file` - Write to files
+- `read_multiple_files` - **NEW:** Read multiple files at once
+- `edit_file` - **NEW:** Surgical text replacement with validation
 - `list_directory` - List directory contents
+- `create_directory` - Create new directories
+- `delete_file` - Delete files
+- `move_file` - Move or rename files
 - `git_status` - Check git status
 - `git_diff` - View changes
+- `git_add` - Stage files for commit
 - `git_commit` - Create commits
 - `get_context` - Get project context
 - `search_memories` - Search project memories
