@@ -27,6 +27,8 @@ A Model Context Protocol (MCP) server that provides Claude Desktop with Claude C
 
 ### 🛠 Available Tools
 - File operations (read, write, create, delete, move)
+- **NEW: Read multiple files** - Read contents of multiple files at once
+- **NEW: Edit file** - Surgical text replacement with validation
 - Git operations (status, diff, add, commit)
 - Context retrieval with token budget management
 - Memory search and management
@@ -223,3 +225,60 @@ Contributions are welcome! Please feel free to submit a Pull Request.
 ## Support
 
 For issues and questions, please open an issue on GitHub.
+
+## New Tools Documentation
+
+### read_multiple_files
+
+Read contents of multiple files simultaneously:
+
+```javascript
+// Example usage
+{
+  "tool": "read_multiple_files",
+  "arguments": {
+    "paths": [
+      "src/index.ts",
+      "package.json",
+      "README.md"
+    ]
+  }
+}
+```
+
+**Features:**
+- Parallel file reading for better performance
+- Error handling for individual files
+- Returns both successful and failed reads
+- Automatically caches read files in context
+
+### edit_file
+
+Perform surgical text replacements in files:
+
+```javascript
+// Example usage
+{
+  "tool": "edit_file",
+  "arguments": {
+    "path": "src/app.ts",
+    "old_content": "const port = 3000;",
+    "new_content": "const port = process.env.PORT || 3000;",
+    "expected_replacements": 1  // Optional, default is 1
+  }
+}
+```
+
+**Features:**
+- Exact content matching and replacement
+- Validation of expected vs actual replacements
+- String similarity detection for helpful error messages
+- Support for replacing all occurrences (expected_replacements: -1)
+- Automatic context update after edits
+- Safe operation with rollback on errors
+
+**Use Cases:**
+- Code refactoring
+- Configuration updates
+- Bug fixes with precise targeting
+- Batch content updates

@@ -236,4 +236,208 @@ export class FileHandler {
     
     return importantPatterns.some(pattern => pattern.test(filePath));
   }
+
+  /**
+   * Read multiple files at once
+   * @param filePaths Array of file paths to read
+   * @returns Array of file contents with metadata
+   */
+  async readMultipleFiles(filePaths: string[]): Promise<Array<{
+    path: string;
+    content: string | null;
+    error?: string;
+  }>> {
+    const results = await Promise.allSettled(
+      filePaths.map(async (filePath) => {
+        try {
+          const content = await fs.readFile(filePath, 'utf-8');
+          
+          // Update context for each file read
+          this.contextManager.updateContext('file_read', {
+            path: filePath,
+            size: content.length,
+            timestamp: new Date()
+          });
+          
+          // Cache the file
+          await this.contextManager.loadFileContext(filePath);
+          
+          return {
+            path: filePath,
+            content: content
+          };
+        } catch (error) {
+          return {
+            path: filePath,
+            content: null,
+            error: error instanceof Error ? error.message : String(error)
+          };
+        }
+      })
+    );
+
+    return results.map(result => {
+      if (result.status === 'fulfilled') {
+        return result.value;
+      } else {
+        return {
+          path: '',
+          content: null,
+          error: result.reason instanceof Error ? result.reason.message : String(result.reason)
+        };
+      }
+    });
+  }
+
+  /**
+   * Edit a file by replacing old content with new content
+   * Supports surgical text replacements with validation
+   * @param filePath Path to the file to edit
+   * @param oldContent Text to replace
+   * @param newContent Replacement text
+   * @param expectedReplacements Number of expected replacements (default: 1)
+   * @returns Result of the edit operation
+   */
+  async editFile(
+    filePath: string,
+    oldContent: string,
+    newContent: string,
+    expectedReplacements: number = 1
+  ): Promise<{
+    success: boolean;
+    message: string;
+    replacements?: number;
+  }> {
+    try {
+      // Read the current file content
+      const currentContent = await fs.readFile(filePath, 'utf-8');
+      
+      // Count occurrences
+      const occurrences = (currentContent.match(new RegExp(
+        oldContent.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 
+        'g'
+      )) || []).length;
+      
+      // Validate expected replacements
+      if (occurrences === 0) {
+        // Try to find similar content for helpful error message
+        const lines = currentContent.split('\n');
+        const oldLines = oldContent.split('\n');
+        const firstOldLine = oldLines[0];
+        
+        let similarLine = '';
+        for (const line of lines) {
+          if (line.includes(firstOldLine.trim()) || 
+              this.calculateSimilarity(line, firstOldLine) > 0.7) {
+            similarLine = line;
+            break;
+          }
+        }
+        
+        return {
+          success: false,
+          message: `Content not found. ${similarLine ? 
+            `Did you mean: "${similarLine.substring(0, 50)}..."?` : 
+            'Please check the exact text to replace.'}`
+        };
+      }
+      
+      if (expectedReplacements !== -1 && occurrences !== expectedReplacements) {
+        return {
+          success: false,
+          message: `Expected ${expectedReplacements} replacement(s) but found ${occurrences} occurrence(s)`,
+          replacements: occurrences
+        };
+      }
+      
+      // Perform the replacement
+      let updatedContent = currentContent;
+      if (expectedReplacements === -1) {
+        // Replace all occurrences
+        updatedContent = currentContent.split(oldContent).join(newContent);
+      } else {
+        // Replace specific number of occurrences
+        let count = 0;
+        updatedContent = currentContent.replace(
+          new RegExp(oldContent.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'g'),
+          (match) => {
+            count++;
+            return count <= expectedReplacements ? newContent : match;
+          }
+        );
+      }
+      
+      // Write the updated content
+      await fs.writeFile(filePath, updatedContent, 'utf-8');
+      
+      // Update context
+      this.contextManager.updateContext('file_edited', {
+        path: filePath,
+        size: updatedContent.length,
+        timestamp: new Date(),
+        replacements: occurrences
+      });
+      
+      // Reload the file in context
+      await this.contextManager.loadFileContext(filePath);
+      
+      return {
+        success: true,
+        message: `Successfully replaced ${occurrences} occurrence(s)`,
+        replacements: occurrences
+      };
+      
+    } catch (error) {
+      return {
+        success: false,
+        message: `Error editing file: ${error instanceof Error ? error.message : String(error)}`
+      };
+    }
+  }
+
+  /**
+   * Calculate string similarity using Levenshtein distance
+   */
+  private calculateSimilarity(str1: string, str2: string): number {
+    const longer = str1.length > str2.length ? str1 : str2;
+    const shorter = str1.length > str2.length ? str2 : str1;
+    
+    if (longer.length === 0) {
+      return 1.0;
+    }
+    
+    const distance = this.levenshteinDistance(longer, shorter);
+    return (longer.length - distance) / longer.length;
+  }
+
+  /**
+   * Calculate Levenshtein distance between two strings
+   */
+  private levenshteinDistance(str1: string, str2: string): number {
+    const matrix: number[][] = [];
+    
+    for (let i = 0; i <= str2.length; i++) {
+      matrix[i] = [i];
+    }
+    
+    for (let j = 0; j <= str1.length; j++) {
+      matrix[0][j] = j;
+    }
+    
+    for (let i = 1; i <= str2.length; i++) {
+      for (let j = 1; j <= str1.length; j++) {
+        if (str2.charAt(i - 1) === str1.charAt(j - 1)) {
+          matrix[i][j] = matrix[i - 1][j - 1];
+        } else {
+          matrix[i][j] = Math.min(
+            matrix[i - 1][j - 1] + 1,  // substitution
+            matrix[i][j - 1] + 1,       // insertion
+            matrix[i - 1][j] + 1        // deletion
+          );
+        }
+      }
+    }
+    
+    return matrix[str2.length][str1.length];
+  }
 }

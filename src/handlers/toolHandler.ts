@@ -109,6 +109,39 @@ export class ToolHandler {
           },
           required: ['source', 'destination']
         }
+      },
+      {
+        name: 'read_multiple_files',
+        description: 'Read contents of multiple files at once',
+        inputSchema: {
+          type: 'object',
+          properties: {
+            paths: {
+              type: 'array',
+              items: { type: 'string' },
+              description: 'Array of file paths to read'
+            }
+          },
+          required: ['paths']
+        }
+      },
+      {
+        name: 'edit_file',
+        description: 'Edit a file by replacing specific content with new content. Supports surgical text replacements.',
+        inputSchema: {
+          type: 'object',
+          properties: {
+            path: { type: 'string', description: 'Path to the file to edit' },
+            old_content: { type: 'string', description: 'Exact content to replace' },
+            new_content: { type: 'string', description: 'New content to insert' },
+            expected_replacements: { 
+              type: 'number', 
+              description: 'Number of expected replacements (default: 1, use -1 for all)',
+              default: 1
+            }
+          },
+          required: ['path', 'old_content', 'new_content']
+        }
       },      {
         name: 'git_status',
         description: 'Get git repository status',
@@ -270,6 +303,62 @@ export class ToolHandler {
                 text: `File moved from ${args.source} to ${args.destination}`
               }
             ]
+          };
+        
+        case 'read_multiple_files':
+          const filesContent = await this.fileHandler.readMultipleFiles(args.paths);
+          const successfulReads = filesContent.filter(f => f.content !== null);
+          const failedReads = filesContent.filter(f => f.content === null);
+          
+          let resultText = '';
+          
+          // Add successful reads
+          if (successfulReads.length > 0) {
+            resultText += '=== Successfully read files ===\n\n';
+            for (const file of successfulReads) {
+              resultText += `File: ${file.path}\n`;
+              resultText += '---\n';
+              resultText += file.content;
+              resultText += '\n\n';
+            }
+          }
+          
+          // Add failed reads
+          if (failedReads.length > 0) {
+            resultText += '=== Failed to read files ===\n\n';
+            for (const file of failedReads) {
+              resultText += `File: ${file.path}\n`;
+              resultText += `Error: ${file.error}\n\n`;
+            }
+          }
+          
+          return {
+            content: [
+              {
+                type: 'text',
+                text: resultText || 'No files to read'
+              }
+            ]
+          };
+        
+        case 'edit_file':
+          const editResult = await this.fileHandler.editFile(
+            args.path,
+            args.old_content,
+            args.new_content,
+            args.expected_replacements || 1
+          );
+          
+          return {
+            content: [
+              {
+                type: 'text',
+                text: editResult.success 
+                  ? `✓ ${editResult.message}` 
+                  : `✗ ${editResult.message}`
+              }
+            ],
+            isError: !editResult.success
           };
         // Git operations
         case 'git_status':
