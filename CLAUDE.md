@@ -1,100 +1,211 @@
-# MCP Project Context Manager - Development Guidelines
+# MCP Project Context Manager
 
-## Project Overview
-This is an MCP (Model Context Protocol) server implementation that provides Claude Desktop with advanced project context management capabilities similar to Claude Code.
+## Proje Özeti
+Bu proje, Claude Desktop için Model Context Protocol (MCP) server implementasyonudur. Claude Code benzeri proje bağlam yönetimi ve kalıcı hafıza yetenekleri sağlar.
 
-## Architecture Principles
-- **Modular Design**: Separate concerns into distinct handlers
-- **Type Safety**: Full TypeScript with strict mode
-- **Performance First**: Optimize for <2s discovery, <1s context loading
-- **Memory Efficient**: Keep memory usage under 200MB
-- **Error Resilient**: Graceful degradation and recovery
+## 🎯 Ana Özellikler
 
-## Code Standards
-- Use ES modules (import/export)
-- Async/await for all asynchronous operations
-- Comprehensive error handling with try-catch
-- Meaningful variable and function names
-- Document complex logic with comments
+### 🔍 Proje Keşfi (Project Discovery)
+- Otomatik git repository tespiti
+- Çok dilli proje türü tanıma (JavaScript, Python, Java, Go, Rust, vb.)
+- Framework tespiti (React, Vue, Angular, Django, Flask, vb.)
+- Paket yöneticisi tanımlama
+- Build tool tespiti
 
-## Directory Structure
-- `/src` - Source code
-  - `/discovery` - Project analysis and detection
-  - `/storage` - Memory and persistence layer
-  - `/context` - Context generation and management
-  - `/handlers` - MCP protocol handlers
-- `/dist` - Compiled JavaScript output
-- `/tests` - Test files (when added)
+### 🧠 Hiyerarşik Hafıza Sistemi
+- Knowledge graph tabanlı kalıcı depolama
+- Proje özelinde hafıza izolasyonu
+- Kullanıcı tercih yönetimi
+- Otomatik hafıza temizliği ve optimizasyonu
+- Konuşmalar arası bağlam koruması
 
-## Key Components
+### 📁 Bağlam Yönetimi
+- Oturum başlangıcında otomatik bağlam yükleme
+- Gerçek zamanlı dosya değişiklik izleme
+- Git durumu takibi
+- Alakaya dayalı akıllı bağlam filtreleme
+- @syntax desteği ile import sistemi (Claude Code benzeri)
 
-### ProjectDiscovery
-- Detects project type, language, framework
-- Finds git information and project structure
-- Locates CLAUDE.md files hierarchically
+### 🛠 Mevcut Araçlar
+- Dosya işlemleri (okuma, yazma, oluşturma, silme, taşıma)
+- Git işlemleri ve durum takibi
+- Dizin listeleme ve navigasyon
+- Proje hafıza arama ve yönetimi
 
-### MemoryManager
-- Persistent knowledge graph storage
-- Project-specific memory isolation
-- User preference management
-- Automatic cleanup of old memories
+## 🏗 Mimari Tasarım
 
-### ContextManager
-- Generates optimized context for Claude
-- Manages file cache and imports
-- Tracks session interactions
-- Handles @import directives
+### Temel Prensipler
+- **Modüler Tasarım**: Endişeleri farklı handler'lara ayırma
+- **Tür Güvenliği**: Strict mode ile tam TypeScript
+- **Performans Odaklı**: <2s keşif, <1s bağlam yükleme optimizasyonu
+- **Hafıza Verimli**: 200MB altında hafıza kullanımı
+- **Hata Dirençli**: Zarif bozulma ve kurtarma
 
-### Handlers
-- **FileHandler**: File system operations and watching
-- **GitHandler**: Git repository operations
-- **ToolHandler**: MCP tool implementations
-- **ResourceHandler**: MCP resource providers
-- **PromptHandler**: MCP prompt templates
-
-## Development Workflow
-1. Make changes in `/src`
-2. Run `npm run build` to compile
-3. Test with Claude Desktop
-4. Monitor console for debug output
-
-## Testing Strategy
-- Unit tests for core logic (memory, discovery)
-- Integration tests for handlers
-- End-to-end tests with mock MCP client
-
-## Performance Targets
-- Project discovery: <2 seconds
-- Context generation: <1 second
-- Memory operations: <500ms
-- File operations: <200ms
-- Total memory usage: <200MB
-
-## Security Considerations
-- Never expose sensitive files (.env, keys)
-- Validate all file paths
-- Sanitize user inputs
-- Use read-only operations by default
-
-## Future Enhancements
-- [ ] Advanced import resolution
-- [ ] Project template system
-- [ ] Multi-project support
-- [ ] Context compression
-- [ ] Smart caching strategies
-- [ ] Plugin system
-- [ ] Web UI for configuration
-
-## Debugging
-Enable verbose logging by setting environment variable:
+### Dizin Yapısı
 ```
+mcp-project-context/
+├── src/                    # Kaynak kod
+│   ├── discovery/          # Proje analizi ve tespiti
+│   ├── storage/            # Hafıza ve kalıcılık katmanı
+│   ├── context/            # Bağlam üretimi ve yönetimi
+│   └── handlers/           # MCP protokol handler'ları
+├── dist/                   # Derlenmiş JavaScript çıktısı
+├── tests/                  # Test dosyaları
+├── test-project/           # Test projesi
+└── package.json            # Proje konfigürasyonu
+```
+
+## 🔧 Anahtar Bileşenler
+
+### ProjectDiscovery (`src/discovery/projectDiscovery.ts`)
+- Proje türü, dil, framework tespiti
+- Git bilgilerini bulma ve proje yapısı
+- CLAUDE.md dosyalarını hiyerarşik olarak bulma
+
+### MemoryManager (`src/storage/`)
+- Kalıcı knowledge graph depolaması
+- Proje özelinde hafıza izolasyonu
+- Kullanıcı tercih yönetimi
+- Eski hafızaların otomatik temizlenmesi
+
+### ContextManager (`src/context/contextManager.ts`)
+- Claude için optimize edilmiş bağlam üretimi
+- Dosya cache ve import'ları yönetimi
+- Oturum etkileşimlerini takip etme
+
+### Handler'lar (`src/handlers/`)
+- **FileHandler**: Dosya sistem işlemleri ve izleme
+- **GitHandler**: Git repository işlemleri
+- **ToolHandler**: MCP araç implementasyonları
+- **ResourceHandler**: MCP kaynak sağlayıcıları
+- **PromptHandler**: MCP prompt şablonları
+
+## 📊 Performans Hedefleri
+- Proje keşfi: <2 saniye
+- Bağlam üretimi: <1 saniye
+- Hafıza işlemleri: <500ms
+- Dosya işlemleri: <200ms
+- Toplam hafıza kullanımı: <200MB
+
+## 🚀 Kurulum ve Kullanım
+
+### Gereksinimler
+- Node.js 18+
+- TypeScript 5.7+
+- Git (opsiyonel, gelişmiş özellikler için)
+
+### Kurulum
+```bash
+npm install
+npm run build
+```
+
+### Geliştirme
+```bash
+npm run dev          # Watch mode ile çalıştırma
+npm run build        # Production build
+npm run test         # Test'leri çalıştırma
+npm run quickstart   # Hızlı başlangıç
+```
+
+### Debug Modu
+```bash
 DEBUG=mcp:* node dist/index.js
 ```
 
-## Contributing
-Please ensure:
-- TypeScript compilation passes
-- No linting errors
-- Tests pass (when implemented)
-- Performance targets are met
-- Security guidelines followed
+## 🔧 Konfigürasyon
+
+### package.json Özeti
+```json
+{
+  "name": "mcp-project-context",
+  "version": "1.0.0",
+  "type": "module",
+  "main": "dist/index.js",
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.0.5",
+    "chokidar": "^4.0.1",
+    "simple-git": "^3.27.0",
+    "glob": "^11.0.0"
+  }
+}
+```
+
+### TypeScript Konfigürasyonu
+- Target: ES2022
+- Module: node16
+- Strict mode aktif
+- Source map ve declaration desteği
+
+## 🔒 Güvenlik Hususları
+- Hassas dosyalar asla açığa çıkarılmaz (.env, anahtarlar)
+- Tüm dosya yolları doğrulanır
+- Kullanıcı girişleri temizlenir
+- Varsayılan olarak salt okuma işlemleri
+
+## 📝 Kod Standartları
+- ES modules (import/export) kullanımı
+- Tüm asenkron işlemler için async/await
+- Try-catch ile kapsamlı hata yönetimi
+- Anlamlı değişken ve fonksiyon isimleri
+- Karmaşık mantığın yorumlarla belgelenmesi
+
+## 🧪 Test Stratejisi
+- Temel mantık için birim testler (hafıza, keşif)
+- Handler'lar için entegrasyon testleri
+- Mock MCP istemcisi ile uçtan uca testler
+
+## 📈 Gelecek Geliştirmeler
+- [ ] Gelişmiş import çözümleme
+- [ ] Proje şablon sistemi
+- [ ] Multi-proje desteği
+- [ ] Bağlam sıkıştırması
+- [ ] Akıllı önbellekleme stratejileri
+- [ ] Plugin sistemi
+- [ ] Konfigürasyon için Web UI
+
+## 🐛 Hata Ayıklama
+Verbose loglama için environment variable ayarlayın:
+```bash
+DEBUG=mcp:* node dist/index.js
+```
+
+## 📊 Git Durumu
+- Branch: main
+- Durum: Uncommitted değişiklikler mevcut
+- Proje aktif geliştirme aşamasında
+
+## 🗂 Test Projesi
+`test-project/` dizininde örnek test projesi bulunmakta:
+- TypeScript projesi
+- Async/await pattern'ları
+- Fonksiyonel programlama prensipleri
+- Component tabanlı mimari
+
+## 🎯 Kullanım Senaryoları
+
+### Claude Desktop Entegrasyonu
+1. MCP server olarak çalışır
+2. Proje bağlamını otomatik keşfeder
+3. Dosya değişikliklerini izler
+4. Cross-conversation hafıza sağlar
+
+### Geliştirici Workflow'u
+1. `/src` dizininde değişiklik yap
+2. `npm run build` ile derle
+3. Claude Desktop ile test et
+4. Console çıktısını izle
+
+## 🔍 Önemli Notlar
+- Proje ID'si otomatik oluşturulur
+- Hafıza proje özelinde izole edilir
+- File watching güvenlik kontrolleri ile sınırlandırılır
+- Git durumu gerçek zamanlı takip edilir
+
+---
+
+**Güncellenme Tarihi**: 5 Eylül 2025  
+**Proje Versiyonu**: 1.0.0  
+**Durum**: Aktif Geliştirme
+
+Bu dokümantasyon, MCP Project Context Manager projesinin tam bir referansıdır ve geliştirme sürecinde rehber olarak kullanılabilir.
