@@ -1,17 +1,22 @@
 {
   "name": "mcp-project-context",
-  "version": "1.0.0",
-  "description": "MCP Server for Claude Desktop project context management",
-  "main": "dist/index.js",
+  "version": "1.1.0-enhanced",
+  "description": "Enhanced MCP Server for Claude Desktop with automatic documentation loading and advanced memory search",
+  "main": "dist/enhancedIndex.js",
   "type": "module",
   "bin": {
-    "mcp-project-context": "dist/index.js"
+    "mcp-project-context": "dist/enhancedIndex.js",
+    "mcp-project-context-legacy": "dist/index.js"
   },
   "scripts": {
     "build": "tsc",
-    "dev": "tsx watch src/index.ts",
-    "start": "node dist/index.js",
+    "build:clean": "rm -rf dist && tsc",
+    "dev": "tsx watch src/enhancedIndex.ts",
+    "dev:legacy": "tsx watch src/index.ts",
+    "start": "node dist/enhancedIndex.js",
+    "start:legacy": "node dist/index.js",
     "test": "jest",
+    "test:enhanced": "jest --testPathPattern=enhanced",
     "quickstart": "node quickstart.cjs",
     "postinstall": "node quickstart.cjs"
   },
