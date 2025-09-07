@@ -44,6 +44,7 @@ export interface SearchSummary {
 /**
  * Advanced code search functionality for MCP
  * Implements professional-grade search with glob, regex, and context support
+ * ENHANCED: Now searches ALL text-based files, not just code files
  */
 export class CodeSearcher {
   private gitignore: Ignore | null = null;
@@ -137,11 +138,12 @@ export class CodeSearcher {
 
   /**
    * Get list of files to search based on options
+   * ENHANCED: Now includes ALL text-based files, not just code files
    */
   private async getFilesToSearch(options: SearchOptions): Promise<string[]> {
     const searchDir = path.resolve(options.directory);
     
-    // Default file pattern if not specified
+    // Default file pattern if not specified - search ALL files
     const filePattern = options.filePattern || '**/*';
     
     // Build glob options
@@ -174,17 +176,43 @@ export class CodeSearcher {
       });
     }
 
-    // Additional filtering for binary files
+    // ENHANCED: Only filter out TRUE binary files
+    // Now includes ALL text-based files: code, configs, docs, data, etc.
     files = files.filter(file => {
       const ext = path.extname(file).toLowerCase();
+      
+      // ONLY exclude true binary/media files
       const binaryExtensions = [
-        '.jpg', '.jpeg', '.png', '.gif', '.bmp', '.ico', '.svg',
-        '.pdf', '.doc', '.docx', '.xls', '.xlsx', '.ppt', '.pptx',
-        '.zip', '.rar', '.tar', '.gz', '.7z',
-        '.exe', '.dll', '.so', '.dylib', '.jar',
-        '.mp3', '.mp4', '.wav', '.avi', '.mov',
-        '.ttf', '.otf', '.woff', '.woff2', '.eot'
+        // Images (NOTE: .svg removed as it's text-based XML)
+        '.jpg', '.jpeg', '.png', '.gif', '.bmp', '.ico', '.webp', '.tiff', '.tif',
+        // Binary documents
+        '.pdf', '.doc', '.docx', '.xls', '.xlsx', '.ppt', '.pptx', '.odt', '.ods', '.odp',
+        // Archives
+        '.zip', '.rar', '.tar', '.gz', '.7z', '.bz2', '.xz', '.z',
+        // Executables and compiled files
+        '.exe', '.dll', '.so', '.dylib', '.jar', '.class', '.pyc', '.pyo', '.o', '.obj',
+        // Media files
+        '.mp3', '.mp4', '.wav', '.avi', '.mov', '.mkv', '.flv', '.wmv', '.webm', '.m4a', '.ogg',
+        // Fonts
+        '.ttf', '.otf', '.woff', '.woff2', '.eot',
+        // Database files
+        '.db', '.sqlite', '.sqlite3', '.mdb', '.accdb',
+        // Other binary formats
+        '.bin', '.dat', '.iso', '.dmg', '.img', '.deb', '.rpm'
       ];
+      
+      // Text-based files that ARE included:
+      // - Code: .js, .ts, .py, .java, .go, .rs, .cpp, .c, .h, .php, .rb, .swift, .kt, etc.
+      // - Markup: .html, .xml, .svg, .md, .rst, .tex, .adoc
+      // - Data: .json, .yaml, .yml, .toml, .ini, .conf, .cfg, .properties
+      // - Config: .env, .gitignore, .dockerignore, .editorconfig, .eslintrc, .prettierrc
+      // - Scripts: .sh, .bat, .ps1, .cmd, .bash, .zsh, .fish
+      // - Text: .txt, .log, .csv, .tsv, .sql
+      // - Styles: .css, .scss, .sass, .less, .styl
+      // - Templates: .ejs, .pug, .hbs, .mustache, .liquid, .njk
+      // - Documentation: .md, .mdx, .rst, .adoc, .org, .textile
+      // - And ANY other text-based format!
+      
       return !binaryExtensions.includes(ext);
     });
 
@@ -274,10 +302,11 @@ export class CodeSearcher {
 
   /**
    * Search for symbols (functions, classes, variables) using simple heuristics
+   * ENHANCED: Now also searches in more file types
    */
   async searchSymbols(
     symbolName: string,
-    filePattern: string = '**/*.{js,ts,jsx,tsx,py,java,go,rs}'
+    filePattern: string = '**/*.{js,ts,jsx,tsx,py,java,go,rs,cpp,c,h,php,rb,swift,kt,cs,vb,scala,dart,lua,r,m,mm}'
   ): Promise<SearchResult[]> {
     // Language-specific patterns for symbol detection
     const symbolPatterns = [
@@ -295,7 +324,16 @@ export class CodeSearcher {
       `func\\s+(\\(\\w+\\s+\\w+\\)\\s+)?${symbolName}\\b`,
       
       // Rust
-      `(fn|struct|enum|trait|impl)\\s+${symbolName}\\b`
+      `(fn|struct|enum|trait|impl)\\s+${symbolName}\\b`,
+      
+      // C/C++
+      `(void|int|char|float|double|bool|auto)\\s+${symbolName}\\s*\\(`,
+      
+      // PHP
+      `(function|class)\\s+${symbolName}\\b`,
+      
+      // Ruby
+      `(def|class|module)\\s+${symbolName}\\b`
     ];
 
     const pattern = `(${symbolPatterns.join('|')})`;
@@ -312,13 +350,14 @@ export class CodeSearcher {
 
   /**
    * Search for TODO/FIXME/NOTE comments
+   * ENHANCED: Now searches in ALL text files, not just code
    */
   async searchTodos(
     includeNotes: boolean = false
   ): Promise<SearchResult[]> {
     const patterns = ['TODO', 'FIXME', 'XXX', 'HACK', 'BUG'];
     if (includeNotes) {
-      patterns.push('NOTE', 'INFO', 'WARNING');
+      patterns.push('NOTE', 'INFO', 'WARNING', 'IMPORTANT', 'TIP', 'HINT');
     }
     
     const pattern = `\\b(${patterns.join('|')})\\b:?\\s*(.*)`;

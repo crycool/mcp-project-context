@@ -64,23 +64,86 @@ class EnhancedMCPProjectContextServer {
   }
   
   private determineWorkingDirectory(): string {
-    // 1. Environment variable'dan al (config'den gelir)
+    // ENHANCED WORKING DIRECTORY DETECTION WITH CONTEXT AWARENESS
+    
+    // 1. Environment variable'dan al (öncelik 1)
     if (process.env.PROJECT_ROOT && fs.existsSync(process.env.PROJECT_ROOT)) {
-      console.error('📁 Using PROJECT_ROOT environment variable:', process.env.PROJECT_ROOT);
+      console.error('✅ Using PROJECT_ROOT environment variable:', process.env.PROJECT_ROOT);
       return path.resolve(process.env.PROJECT_ROOT);
     }
     
-    // 2. process.cwd() kontrol et, eğer root ise script'in bulunduğu yeri kullan
+    // 2. Known project paths from context (öncelik 2)
+    const knownProjectPaths = [
+      'C:\\teamvoicechat',           // Your actual project
+      'C:\\mcp-project-context',      // MCP tool itself
+      process.env.MCP_TARGET_PROJECT  // Dynamic environment variable
+    ].filter(Boolean);
+    
+    for (const projectPath of knownProjectPaths) {
+      if (projectPath && fs.existsSync(projectPath)) {
+        const gitPath = path.join(projectPath, '.git');
+        if (fs.existsSync(gitPath)) {
+          console.error('✅ Found known project with git:', projectPath);
+          // Change process working directory to the correct path
+          if (process.cwd() !== projectPath) {
+            try {
+              process.chdir(projectPath);
+              console.error('📁 Changed working directory to:', projectPath);
+            } catch (err) {
+              console.error('⚠️ Could not change directory:', err);
+            }
+          }
+          return projectPath;
+        }
+      }
+    }
+    
+    // 3. Check if we're in Claude's exe folder and need to find the real project
     const cwd = process.cwd();
-    if (cwd === '/' || cwd === 'C:\\') {
-      // Script'in bulunduğu dizinin üst klasörü (src/index.ts -> proje root)
+    if (cwd.includes('AnthropicClaude') || cwd.includes('app-')) {
+      console.error('⚠️ Detected Claude exe folder, searching for actual project...');
+      
+      // Try to find git projects in parent directories
+      let searchPath = path.resolve(cwd, '..', '..', '..');
+      const maxLevels = 5;
+      
+      for (let i = 0; i < maxLevels; i++) {
+        const dirs = fs.readdirSync(searchPath).filter(dir => {
+          const fullPath = path.join(searchPath, dir);
+          return fs.statSync(fullPath).isDirectory() && 
+                 fs.existsSync(path.join(fullPath, '.git'));
+        });
+        
+        if (dirs.length > 0) {
+          const projectPath = path.join(searchPath, dirs[0]);
+          console.error('✅ Found git project:', projectPath);
+          process.chdir(projectPath);
+          return projectPath;
+        }
+        
+        searchPath = path.resolve(searchPath, '..');
+      }
+    }
+    
+    // 4. Look for .git in current or parent directories
+    let currentPath = cwd;
+    while (currentPath !== path.resolve(currentPath, '..')) {
+      if (fs.existsSync(path.join(currentPath, '.git'))) {
+        console.error('✅ Found git repository at:', currentPath);
+        return currentPath;
+      }
+      currentPath = path.resolve(currentPath, '..');
+    }
+    
+    // 5. If root or system directory, use script location
+    if (cwd === '/' || cwd === 'C:\\' || cwd.includes('Windows')) {
       const scriptDir = path.dirname(new URL(import.meta.url).pathname);
       const resolvedPath = path.resolve(scriptDir, '..');
       console.error('📁 Using script directory parent:', resolvedPath);
       return resolvedPath;
     }
     
-    // 3. Normal durumda process.cwd() kullan
+    // 6. Default to current directory
     console.error('📁 Using current working directory:', cwd);
     return cwd;
   }

@@ -31,3 +31,42 @@ This file contains project-specific memories and context for the MCP Project Con
 - [ ] Update documentation
 - [ ] Create example CLAUDE.md templates
 - [ ] Add file watching for external edits
+
+## 2025-09-07T10:04:08.913Z
+## Working Directory Fix Applied
+
+**Problem:** MCP tool was starting in Claude's exe directory instead of actual project directory
+**Solution:** Enhanced working directory detection with environment variables and auto-correction
+
+### Configuration:
+- Claude Desktop config now includes PROJECT_ROOT environment variable
+- Tool automatically detects and switches to C:\teamvoicechat
+- Falls back to git repository detection if env var not set
+
+### Files Modified:
+- `src/enhancedIndex.ts` - Enhanced determineWorkingDirectory() method
+- `src/utils/workingDirectoryFix.js` - New utility for directory management
+- `claude_desktop_config.json` - Added PROJECT_ROOT env variable
+
+**Status:** ✅ Fixed and ready for testing
+**Tags:** working-directory, mcp-fix, configuration
+
+
+## 2025-09-07T10:14:40.169Z
+## Search Enhancement Completed
+
+**Improvement:** search_code now searches ALL text-based files, not just code files
+
+### Changes Made:
+- Removed `.svg` from binary exclusions (it's text-based XML)
+- Added more binary formats to exclusion list
+- Now searches in: code, configs, markdown, json, yaml, xml, env, scripts, logs, etc.
+- Enhanced symbol search to include more programming languages
+- Added more TODO patterns (IMPORTANT, TIP, HINT)
+
+### Files Modified:
+- `src/search/codeSearcher.ts` - Enhanced filtering logic
+
+**Status:** ✅ Ready for compilation and testing
+**Tags:** search-enhancement, all-files, mcp-improvement
+

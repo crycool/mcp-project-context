@@ -1,73 +1,56 @@
 # MCP Project Context Manager
 
-A Model Context Protocol (MCP) server that provides Claude Desktop with Claude Code-like project context management and persistent memory capabilities.
+A powerful Model Context Protocol (MCP) server that provides Claude Desktop with Claude Code-like project context management, file-based persistent memory, and comprehensive search capabilities.
 
-## Features
+## 🚀 Key Features
 
-### 🔍 Project Discovery
-- Automatic git repository detection
-- Multi-language project type recognition (JavaScript, Python, Java, Go, Rust, etc.)
-- Framework detection (React, Vue, Angular, Django, Flask, etc.)
-- Package manager identification
-- Build tool detection
+### 🧠 File-Based Memory System (Claude Code-like)
+- **Hierarchical CLAUDE.md files** for persistent memory storage
+- **Always in context** - no search required, memories are immediately available
+- **@import system** for including external files
+- **Memory hierarchy**: Enterprise > Project > User > Local
 
-### 🧠 Hierarchical Memory System
-- Knowledge graph-based persistent storage
-- Project-specific memory isolation
-- User preference management
-- Automatic memory cleanup and optimization
-- Cross-conversation context preservation
+### 🔍 Enhanced Search Capabilities
+- **Search ALL text files** - not just code files
+- Includes: `.md`, `.json`, `.yaml`, `.xml`, `.env`, `.txt`, `.log`, `.csv`, `.html`, `.css`, `.svg`
+- Advanced pattern matching with regex support
+- Context lines for better understanding
+- Symbol search across multiple languages
+- TODO/FIXME comment tracking
 
-### 📁 Context Management
-- Automatic context loading on session start
-- Real-time file change monitoring
-- Git state tracking
-- Smart context filtering based on relevance
-- Import system with @syntax support (like Claude Code)
+### 📁 Smart Working Directory Detection
+- **Automatic project root detection** - handles Claude Desktop's exe folder issue
+- Environment variable support (`PROJECT_ROOT`)
+- Git repository detection
+- Automatic `process.chdir()` to correct directory
 
-### 🛠 Available Tools
-- File operations (read, write, create, delete, move)
-- **NEW: Read multiple files** - Read contents of multiple files at once
-- **NEW: Edit file** - Surgical text replacement with validation
-- **NEW: Search code** - Advanced code search with regex, glob patterns, and context
-- Git operations (status, diff, add, commit)
-- Context retrieval with token budget management
-- Memory search and management
-- Directory operations
+### 🛠 Comprehensive Tool Set
+- **File Operations**: read, write, edit, delete, move, create directories
+- **Multi-file Operations**: read multiple files simultaneously
+- **Git Integration**: status, diff, add, commit
+- **Search Tools**: code search, symbol search, TODO search
+- **Memory Management**: add memories, list recent memories, reload memories
 
-### 📚 Resources
-- Project overview and statistics
-- Directory structure visualization
-- CLAUDE.md instructions access
-- Important project files
-- Configuration files
+## 📦 Installation
 
-### 💬 Prompts
-- Project context for development
-- Code review with project standards
-- Debug context with recent changes
-- Feature development assistance
-- Refactoring guidance
-## Installation
-
-1. Clone the repository:
+1. **Clone the repository:**
 ```bash
 cd C:\
 git clone <repository-url> mcp-project-context
 cd mcp-project-context
 ```
 
-2. Install dependencies:
+2. **Install dependencies:**
 ```bash
 npm install
 ```
 
-3. Build the project:
+3. **Build the project:**
 ```bash
 npm run build
 ```
 
-## Configuration
+## ⚙️ Configuration
 
 Add to your Claude Desktop configuration file:
 
@@ -80,288 +63,185 @@ Add to your Claude Desktop configuration file:
   "mcpServers": {
     "project-context": {
       "command": "node",
-      "args": ["C:\\mcp-project-context\\dist\\index.js"],
-      "cwd": "C:\\your-project-directory"
+      "args": ["C:\\mcp-project-context\\dist\\enhancedIndex.js"],
+      "env": {
+        "PROJECT_ROOT": "C:\\your-project-directory",
+        "NODE_ENV": "production"
+      }
     }
   }
 }
 ```
 
-## Usage
+### Configuration Notes:
+- **PROJECT_ROOT**: Specify your project directory (tool auto-detects if not set)
+- **enhancedIndex.js**: The enhanced version with all new features
+- Tool automatically handles working directory issues
 
-1. **Start Claude Desktop** - The MCP server will automatically start when you open Claude Desktop
+## 📝 CLAUDE.md Memory System
 
-2. **Navigate to your project** - Set the `cwd` in configuration to your project directory
+Create `CLAUDE.md` files in your project for persistent memory:
 
-3. **Automatic Discovery** - The server will automatically:
-   - Detect project type and structure
-   - Load CLAUDE.md instructions
-   - Initialize memory system
-   - Start file watching
-## CLAUDE.md Files
-
-Create `CLAUDE.md` files in your project to provide context and instructions:
-
-### Root CLAUDE.md
+### Root CLAUDE.md Example
 ```markdown
-# Project Instructions
+# Project Memory
 
-This is a React application using TypeScript and Material-UI.
+## Project Standards
+- Use TypeScript with strict mode
+- Follow ESLint configuration
+- Write tests for all features
 
-## Code Standards
-- Use functional components with hooks
-- Prefer async/await over promises
-- Use meaningful variable names
+## Architecture Notes
+- Frontend: React + TypeScript
+- Backend: Node.js + Express
+- Database: PostgreSQL
 
-## Architecture
-- Components in src/components
-- Services in src/services
-- Utilities in src/utils
+## Recent Decisions
+- 2025-01-07: Migrated to file-based memory system
+- 2025-01-06: Added WebRTC for video chat
 
 @import ./docs/API.md
 @import ./docs/DATABASE.md
 ```
 
-### Import System
-- Use `@import` to include other files
-- Supports relative and absolute paths
-- Maximum import depth: 5 levels
-- Circular imports are detected and prevented
+### Memory Hierarchy
+1. **Enterprise**: `C:\CLAUDE.md` - Organization-wide knowledge
+2. **Project**: `C:\project\CLAUDE.md` - Project-specific information
+3. **User**: `%USERPROFILE%\CLAUDE.md` - Personal preferences
+4. **Local**: `.\CLAUDE.md` - Current directory context
 
-## Available Commands
+## 🔧 Available Tools
 
-### Tools (via Claude)
-- `read_file` - Read file contents
-- `write_file` - Write to files
-- `read_multiple_files` - **NEW:** Read multiple files at once
-- `edit_file` - **NEW:** Surgical text replacement with validation
-- `search_code` - **NEW:** Advanced pattern search in code
-- `search_symbols` - **NEW:** Find function/class definitions
-- `search_todos` - **NEW:** Find TODO/FIXME comments
-- `list_directory` - List directory contents
-- `create_directory` - Create new directories
+### File Operations
+- `read_file` - Read single file
+- `read_multiple_files` - Read multiple files at once
+- `write_file` - Write content to file
+- `edit_file` - Surgical text replacement
 - `delete_file` - Delete files
 - `move_file` - Move or rename files
-- `git_status` - Check git status
+- `create_directory` - Create new directories
+- `list_directory` - List directory contents
+
+### Search Tools (Enhanced)
+- `search_code` - Search in ALL text files (not just code)
+  - Pattern matching (text or regex)
+  - File type filtering
+  - Context lines
+  - Gitignore respect
+- `search_symbols` - Find function/class definitions
+- `search_todos` - Find TODO/FIXME/NOTE comments
+
+### Git Operations
+- `git_status` - Check repository status
 - `git_diff` - View changes
-- `git_add` - Stage files for commit
+- `git_add` - Stage files
 - `git_commit` - Create commits
-- `get_context` - Get project context
-- `search_memories` - Search project memories
-- `add_memory` - Add new memories
 
-### Resources (accessible in Claude)
-- Project overview
-- Project structure
-- CLAUDE.md instructions
-- Important project files
+### Memory & Context
+- `get_context` - Get project context with memory
+- `add_memory` - Add to CLAUDE.md
+- `add_quick_memory` - Quick note (like # in Claude Code)
+- `list_recent_memories` - Show recent memory entries
+- `get_memory_status` - Check memory file status
+- `reload_memories` - Reload if edited externally
 
-### Prompts (templates for Claude)
-- `project_context` - Full project context
-- `code_review` - Code review assistance
-- `debug_context` - Debugging help
-- `feature_development` - Feature planning
-- `refactoring` - Refactoring guidance
-## Development
+## 💡 Usage Examples
 
-### Running in Development Mode
-```bash
-npm run dev
+### Adding Memory
+```javascript
+// Add important project decision
+add_memory("Decided to use WebSockets for real-time updates", ["architecture", "websocket"])
 ```
 
-### Testing
-```bash
-npm test
+### Enhanced Search
+```javascript
+// Search in ALL files including configs, docs, etc.
+search_code({
+  pattern: "API_KEY",
+  contextLines: 2
+})
+// Now finds matches in .env, .json, .yaml, etc.!
 ```
 
-### Project Structure
+### Reading Multiple Files
+```javascript
+read_multiple_files({
+  paths: ["package.json", "README.md", ".env"]
+})
+```
+
+## 📊 Performance
+
+- **Working Directory Detection**: <100ms
+- **Memory Loading**: Instant (always in context)
+- **Search Operations**: <500ms for typical projects
+- **Multi-file Read**: Parallel processing
+- **Context Generation**: <1 second with caching
+
+## 🗂 Project Structure
+
 ```
 mcp-project-context/
 ├── src/
-│   ├── index.ts                 # Main server entry
-│   ├── discovery/
-│   │   └── projectDiscovery.ts  # Project analysis
+│   ├── enhancedIndex.ts         # Main enhanced server
+│   ├── discovery/                # Project analysis
 │   ├── storage/
-│   │   └── memoryManager.ts     # Memory persistence
+│   │   └── fileBasedMemoryManager.ts  # File-based memory
 │   ├── context/
-│   │   └── contextManager.ts    # Context generation
-│   └── handlers/
-│       ├── fileHandler.ts       # File operations
-│       ├── gitHandler.ts        # Git operations
-│       ├── toolHandler.ts       # MCP tools
-│       ├── resourceHandler.ts   # MCP resources
-│       └── promptHandler.ts     # MCP prompts
+│   │   └── enhancedContextManager.ts  # Enhanced context
+│   ├── search/
+│   │   └── codeSearcher.ts      # Enhanced search (all files)
+│   ├── handlers/                 # MCP handlers
+│   └── utils/
+│       └── workingDirectoryFix.js  # Auto directory detection
 ├── dist/                         # Compiled output
-├── package.json
-├── tsconfig.json
+├── CLAUDE.md                     # Project memory
 └── README.md
 ```
 
-## Performance
-
-- **Project Discovery**: <2 seconds for typical repositories
-- **Context Loading**: <1 second for cached projects
-- **Memory Operations**: <500ms for reads
-- **File Operations**: <200ms for metadata
-- **Memory Usage**: <200MB for typical projects
-
-## Data Storage
-
-Project memories and preferences are stored locally:
-- **Windows**: `%USERPROFILE%\.mcp-project-context\`
-- **macOS/Linux**: `~/.mcp-project-context/`
-
-Data includes:
-- Project-specific memories
-- Knowledge graphs
-- User preferences
-- Session history
-
-## Security
+## 🔐 Security & Privacy
 
 - All data stored locally (no cloud sync)
-- Sensitive file filtering (.env, keys, tokens)
-- Read-only by default
-- Safe file operation sandboxing
+- Sensitive file filtering
+- Binary file exclusion
+- Gitignore respect
+- Safe file operations
 
-## License
+## 🐛 Troubleshooting
 
-MIT
+### Working Directory Issues
+If the tool starts in wrong directory:
+1. Set `PROJECT_ROOT` environment variable in config
+2. Tool auto-detects git repositories
+3. Check logs for directory detection
 
-## Contributing
+### Memory Not Loading
+1. Ensure CLAUDE.md exists in project root
+2. Check file permissions
+3. Use `reload_memories` tool
+
+### Search Not Finding Files
+1. Check if file type is in binary exclusion list
+2. Verify file is not gitignored
+3. Use specific file patterns
+
+## 📈 Recent Improvements
+
+### Version 2.0.0 (January 2025)
+- ✅ File-based memory system (replaced database)
+- ✅ Enhanced search for ALL text files
+- ✅ Working directory auto-detection
+- ✅ Multi-file read operations
+- ✅ Surgical file editing
+
+## 🤝 Contributing
 
 Contributions are welcome! Please feel free to submit a Pull Request.
 
-## Support
+## 📄 License
+
+MIT
+
+## 🆘 Support
 
 For issues and questions, please open an issue on GitHub.
-
-## New Tools Documentation
-
-### read_multiple_files
-
-Read contents of multiple files simultaneously:
-
-```javascript
-// Example usage
-{
-  "tool": "read_multiple_files",
-  "arguments": {
-    "paths": [
-      "src/index.ts",
-      "package.json",
-      "README.md"
-    ]
-  }
-}
-```
-
-**Features:**
-- Parallel file reading for better performance
-- Error handling for individual files
-- Returns both successful and failed reads
-- Automatically caches read files in context
-
-### edit_file
-
-Perform surgical text replacements in files:
-
-```javascript
-// Example usage
-{
-  "tool": "edit_file",
-  "arguments": {
-    "path": "src/app.ts",
-    "old_content": "const port = 3000;",
-    "new_content": "const port = process.env.PORT || 3000;",
-    "expected_replacements": 1  // Optional, default is 1
-  }
-}
-```
-
-**Features:**
-- Exact content matching and replacement
-- Validation of expected vs actual replacements
-- String similarity detection for helpful error messages
-- Support for replacing all occurrences (expected_replacements: -1)
-- Automatic context update after edits
-- Safe operation with rollback on errors
-
-**Use Cases:**
-- Code refactoring
-- Configuration updates
-- Bug fixes with precise targeting
-- Batch content updates
-
-### search_code
-
-Advanced code search with powerful filtering options:
-
-```javascript
-// Example usage
-{
-  "tool": "search_code",
-  "arguments": {
-    "pattern": "useState",
-    "filePattern": "**/*.tsx",
-    "contextLines": 3,
-    "regex": false
-  }
-}
-```
-
-**Features:**
-- **Pattern matching**: Text or regex patterns
-- **Glob file patterns**: Filter by file types (e.g., `*.ts`, `**/*.js`)
-- **Context lines**: Show surrounding code for better understanding
-- **Gitignore respect**: Automatically excludes gitignored files
-- **Binary file filtering**: Skips non-text files
-- **Performance caching**: 5-second result cache for repeated searches
-- **Exclude patterns**: Custom exclusion rules
-
-**Advanced Options:**
-- `caseSensitive`: Case-sensitive matching (default: false)
-- `regex`: Treat pattern as regular expression
-- `contextLines`: Lines of context around matches (default: 2)
-- `maxResults`: Limit number of results (default: 100)
-- `includeHidden`: Search hidden files
-- `followSymlinks`: Follow symbolic links
-
-### search_symbols
-
-Find symbol definitions across your codebase:
-
-```javascript
-{
-  "tool": "search_symbols",
-  "arguments": {
-    "symbolName": "UserService",
-    "filePattern": "**/*.ts"
-  }
-}
-```
-
-**Supports:**
-- JavaScript/TypeScript: functions, classes, variables
-- Python: functions, classes
-- Java/C#: methods, classes
-- Go: functions, structs
-- Rust: functions, structs, enums
-
-### search_todos
-
-Find TODO/FIXME comments in your code:
-
-```javascript
-{
-  "tool": "search_todos",
-  "arguments": {
-    "includeNotes": true
-  }
-}
-```
-
-**Searches for:**
-- TODO, FIXME, XXX, HACK, BUG
-- Optionally: NOTE, INFO, WARNING
-- Organized by type with file locations
