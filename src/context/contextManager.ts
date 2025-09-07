@@ -238,9 +238,9 @@ export class ContextManager {
     }
   }
 
-  private async loadFileInfo(filePath: string): Promise<void> {
+  private async loadFileInfo(filePath: string): Promise<FileInfo | null> {
     if (this.fileCache.has(filePath)) {
-      return;
+      return this.fileCache.get(filePath)!;
     }
     
     try {
@@ -264,8 +264,11 @@ export class ContextManager {
           .sort((a, b) => b.importance - a.importance)
           .slice(0, 15);
       }
+      
+      return fileInfo;
     } catch {
       // File doesn't exist or can't be read
+      return null;
     }
   }
 
@@ -312,5 +315,13 @@ export class ContextManager {
   updateContext(type: string, data: any): void {
     this.context.interactions++;
     // File-based system doesn't need complex tracking
+  }
+
+  /**
+   * Load file context (public method for FileHandler)
+   * Returns the FileInfo for compatibility with promptHandler
+   */
+  async loadFileContext(filePath: string): Promise<FileInfo | null> {
+    return await this.loadFileInfo(filePath);
   }
 }
