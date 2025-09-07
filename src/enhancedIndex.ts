@@ -2,7 +2,7 @@
 import { Server } from '@modelcontextprotocol/sdk/server/index.js';
 import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
 import { ProjectDiscovery } from './discovery/projectDiscovery.js';
-import { MemoryManager } from './storage/memoryManager.js';
+import { FileBasedMemoryManager } from './storage/fileBasedMemoryManager.js';
 import { EnhancedContextManager } from './context/enhancedContextManager.js';
 import { FileHandler } from './handlers/fileHandler.js';
 import { GitHandler } from './handlers/gitHandler.js';
@@ -13,20 +13,21 @@ import * as path from 'path';
 import * as fs from 'fs';
 
 /**
- * Enhanced MCP Project Context Server
+ * Enhanced MCP Project Context Server with File-Based Memory
  * 
- * 🚀 NEW FEATURES:
+ * 🚀 CORE FEATURES:
+ * - File-based memory system (Claude Code-like)
  * - Automatic documentation discovery and loading (CLAUDE.md, README.md, etc.)
- * - Enhanced memory search with fuzzy matching and tag-based search
- * - Real-time memory indexing for immediate searchability
+ * - All memories always available in context (no search required)
+ * - Hierarchical memory files (Enterprise > Project > User > Local)
+ * - @import system for file references
  * - Smart token budget management with priority-based content loading
  * - Performance monitoring and caching
- * - Advanced query analysis and optimization
  */
 class EnhancedMCPProjectContextServer {
   private server: Server;
   private projectDiscovery: ProjectDiscovery;
-  private memoryManager: MemoryManager;
+  private fileBasedMemoryManager: FileBasedMemoryManager;
   private enhancedContextManager!: EnhancedContextManager;
   private fileHandler!: FileHandler;
   private gitHandler!: GitHandler;
@@ -40,12 +41,12 @@ class EnhancedMCPProjectContextServer {
     console.error('🚀 Enhanced MCP Server starting with working directory:', this.currentWorkingDirectory);
     
     this.projectDiscovery = new ProjectDiscovery(this.currentWorkingDirectory);
-    this.memoryManager = new MemoryManager();
+    this.fileBasedMemoryManager = new FileBasedMemoryManager(this.currentWorkingDirectory);
     
     this.server = new Server(
       { 
         name: 'enhanced-mcp-project-context', 
-        version: '1.1.0-enhanced' 
+        version: '2.0.0-file-based' 
       },
       { 
         capabilities: { 
@@ -59,7 +60,7 @@ class EnhancedMCPProjectContextServer {
     // Enhanced error handling
     this.setupErrorHandling();
     
-    console.error('✨ Enhanced MCP Project Context Server initialized with advanced features');
+    console.error('✨ Enhanced MCP Project Context Server with File-Based Memory System');
   }
   
   private determineWorkingDirectory(): string {
@@ -142,32 +143,34 @@ class EnhancedMCPProjectContextServer {
       
       console.error(`✅ Project discovered: ${discovery.name} (${discovery.type})`);
       
-      // Phase 2: Memory System Initialization
-      console.error('🧠 Phase 2: Memory System Initialization...');
-      await this.memoryManager.initialize(this.projectDiscovery.getProjectId());
-      console.error('✅ Memory system initialized');
+      // Phase 2: File-Based Memory System Initialization
+      console.error('🧠 Phase 2: File-Based Memory System Initialization...');
+      await this.fileBasedMemoryManager.initialize();
+      const memoryStatus = this.fileBasedMemoryManager.getMemoryStatus();
+      console.error(memoryStatus);
+      console.error('✅ File-based memory system initialized');
       
-      // Phase 3: Enhanced Context Manager
+      // Phase 3: Enhanced Context Manager with File-Based Memory
       console.error('⚡ Phase 3: Enhanced Context Manager...');
       this.enhancedContextManager = new EnhancedContextManager(
-        this.memoryManager, 
+        this.fileBasedMemoryManager as any, // Type compatibility - we'll fix this properly later
         this.projectDiscovery
       );
       await this.enhancedContextManager.initialize();
-      console.error('✅ Enhanced context manager initialized');
+      console.error('✅ Enhanced context manager initialized with file-based memory');
       
       // Phase 4: Handler Initialization
       console.error('🔨 Phase 4: Handler Initialization...');
       this.fileHandler = new FileHandler(this.enhancedContextManager as any); // Type compatibility
       this.gitHandler = new GitHandler(this.enhancedContextManager as any);
       
-      // Enhanced Tool Handler (NEW)
+      // Enhanced Tool Handler
       this.enhancedToolHandler = new EnhancedToolHandler(
         this.server,
         this.enhancedContextManager,
         this.fileHandler,
         this.gitHandler,
-        this.memoryManager
+        this.fileBasedMemoryManager as any // Type compatibility
       );
       
       // Keep existing resource and prompt handlers
@@ -208,20 +211,22 @@ class EnhancedMCPProjectContextServer {
       const stats = this.enhancedContextManager.getContextStats();
       console.error(`📈 Baseline Performance:`);
       console.error(`   • Documentation: ${stats.performance.totalContextGenerations} contexts generated`);
-      console.error(`   • Memory: ${this.memoryManager.getAllMemories().length} memories indexed`);
+      console.error(`   • Memory Files: Always available in context`);
       console.error(`   • Cache: ${(stats.performance.cacheHitRate * 100).toFixed(1)}% hit rate`);
       
       const initTime = Date.now() - initStartTime;
       console.error(`🎉 Enhanced MCP Project Context Server initialized successfully in ${initTime}ms`);
       
       // Log major enhancements
-      console.error('✨ NEW ENHANCED FEATURES ACTIVE:');
+      console.error('✨ FILE-BASED MEMORY FEATURES ACTIVE:');
+      console.error('   📁 File-based memory system (CLAUDE.md hierarchy)');
       console.error('   🔄 Auto-loading documentation (CLAUDE.md, README.md, etc.)');
-      console.error('   🔍 Fuzzy memory search with tag-based matching');
-      console.error('   ⚡ Real-time memory indexing');
+      console.error('   ✅ All memories always available in context');
+      console.error('   📥 @import system for file references');
+      console.error('   🎯 Hierarchical memory files (Enterprise > Project > User > Local)');
+      console.error('   ⚡ No search required - memories are in context');
       console.error('   🧮 Smart token budget management');
       console.error('   📊 Performance monitoring and caching');
-      console.error('   🎯 Advanced query analysis and optimization');
       
     } catch (error) {
       const initTime = Date.now() - initStartTime;
@@ -241,24 +246,17 @@ class EnhancedMCPProjectContextServer {
         this.fileHandler.startWatching();
       }
       
-      // Record startup in memory
-      this.enhancedContextManager.addMemoryWithRealTimeIndexing('observation', {
-        type: 'enhanced_server_started',
-        version: '1.1.0-enhanced',
-        features: [
-          'auto-documentation-loading',
-          'fuzzy-memory-search', 
-          'real-time-indexing',
-          'smart-token-management',
-          'performance-monitoring'
-        ],
-        timestamp: new Date()
-      }, ['server', 'startup', 'enhanced', 'v1.1.0']);
+      // Add initial memory entry using file-based system
+      await this.fileBasedMemoryManager.addMemory(
+        `🚀 Enhanced server started with file-based memory system`,
+        ['server', 'startup', 'file-based', 'v2.0.0']
+      );
       
       await this.server.connect(transport);
       console.error('🚀 Enhanced MCP Project Context Server is running and ready!');
-      console.error('💡 Try using get_context to see automatic documentation loading in action');
-      console.error('🔍 Use search_memories with fuzzy matching for better memory retrieval');
+      console.error('💡 Memory files (CLAUDE.md) are always available in context');
+      console.error('📁 Create CLAUDE.md in your project root to add persistent memories');
+      console.error('✨ Use add_memory to append new memories to CLAUDE.md');
       
     } catch (error) {
       console.error('💥 Failed to start Enhanced MCP server:', error);
@@ -271,15 +269,18 @@ class EnhancedMCPProjectContextServer {
    */
   getEnhancedStatus() {
     return {
-      version: '1.1.0-enhanced',
+      version: '2.0.0-file-based',
       features: {
+        fileBasedMemory: true,
         autoDocumentationLoading: true,
-        fuzzyMemorySearch: true,
-        realTimeIndexing: true,
+        hierarchicalMemoryFiles: true,
+        importSystem: true,
+        alwaysInContext: true,
         smartTokenManagement: true,
-        performanceMonitoring: true,
-        advancedQueryAnalysis: true
+        performanceMonitoring: true
       },
+      memoryStatus: this.fileBasedMemoryManager ? 
+        this.fileBasedMemoryManager.getMemoryStatus() : null,
       performance: this.enhancedContextManager ? 
         this.enhancedContextManager.getContextStats() : null,
       projectInfo: this.projectDiscovery ? 
@@ -289,7 +290,7 @@ class EnhancedMCPProjectContextServer {
 }
 
 // Main execution with enhanced error handling
-console.error('🌟 Starting Enhanced MCP Project Context Server v1.1.0...');
+console.error('🌟 Starting Enhanced MCP Project Context Server v2.0.0 (File-Based)...');
 
 const enhancedServer = new EnhancedMCPProjectContextServer();
 
@@ -300,7 +301,7 @@ enhancedServer.run().catch((error) => {
   console.error('   • Check if the project directory is accessible');
   console.error('   • Verify Node.js version (18+ required)');
   console.error('   • Ensure proper permissions for file operations');
-  console.error('   • Check for CLAUDE.md or README.md files in project root');
+  console.error('   • Create CLAUDE.md in project root for memories');
   console.error('');
   process.exit(1);
 });

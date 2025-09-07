@@ -7,15 +7,15 @@ import type { Tool } from '@modelcontextprotocol/sdk/types.js';
 import { EnhancedContextManager } from '../context/enhancedContextManager.js';
 import { FileHandler } from './fileHandler.js';
 import { GitHandler } from './gitHandler.js';
-import { MemoryManager } from '../storage/memoryManager.js';
+import { FileBasedMemoryManager } from '../storage/fileBasedMemoryManager.js';
 
 /**
- * Enhanced Tool Handler with Advanced Context Management
+ * Enhanced Tool Handler with File-Based Memory System
  * 
- * New Features:
+ * Features:
+ * - File-based memory system (CLAUDE.md hierarchy)
  * - Auto-loading documentation in get_context
- * - Enhanced memory search with fuzzy matching
- * - Real-time memory indexing
+ * - All memories always available in context (no search needed)
  * - Performance monitoring and statistics
  * - Smart context generation with token budget management
  */
@@ -24,24 +24,24 @@ export class EnhancedToolHandler {
   private contextManager: EnhancedContextManager;
   private fileHandler: FileHandler;
   private gitHandler: GitHandler;
-  private memoryManager: MemoryManager;
+  private fileBasedMemoryManager: FileBasedMemoryManager;
 
   constructor(
     server: Server,
     contextManager: EnhancedContextManager,
     fileHandler: FileHandler,
     gitHandler: GitHandler,
-    memoryManager: MemoryManager
+    fileBasedMemoryManager: FileBasedMemoryManager
   ) {
     this.server = server;
     this.contextManager = contextManager;
     this.fileHandler = fileHandler;
     this.gitHandler = gitHandler;
-    this.memoryManager = memoryManager;
+    this.fileBasedMemoryManager = fileBasedMemoryManager;
   }
 
   async initialize() {
-    console.error('🔧 Initializing Enhanced Tool Handler...');
+    console.error('🔧 Initializing Enhanced Tool Handler with file-based memory...');
     
     // Register list tools handler
     this.server.setRequestHandler(ListToolsRequestSchema, async () => ({
@@ -53,18 +53,18 @@ export class EnhancedToolHandler {
       return await this.handleEnhancedToolCall(request.params.name, request.params.arguments || {});
     });
     
-    console.error('✅ Enhanced Tool Handler initialized');
+    console.error('✅ Enhanced Tool Handler initialized with file-based memory');
   }
 
   /**
-   * Get enhanced tool definitions including new advanced features
+   * Get enhanced tool definitions with file-based memory features
    */
   private getEnhancedToolDefinitions(): Tool[] {
     return [
-      // ================== ENHANCED CORE TOOLS ==================
+      // ================== FILE-BASED MEMORY TOOLS ==================
       {
         name: 'get_context',
-        description: '🚀 ENHANCED: Get current project context with automatic documentation loading and smart token management',
+        description: '🚀 Get current project context with file-based memory (all memories always available)',
         inputSchema: {
           type: 'object',
           properties: {
@@ -75,95 +75,75 @@ export class EnhancedToolHandler {
             },
             includeDocumentation: {
               type: 'boolean',
-              description: 'Auto-load project documentation (CLAUDE.md, README.md, etc.) - NEW FEATURE',
-              default: true
-            },
-            includeRecentMemories: {
-              type: 'boolean',
-              description: 'Include recent project memories',
+              description: 'Auto-load project documentation (CLAUDE.md, README.md, etc.)',
               default: true
             },
             includeFileContent: {
               type: 'boolean',
               description: 'Include key project files content',
               default: true
-            },
-            maxRecentFiles: {
-              type: 'number',
-              description: 'Maximum number of recent files to include',
-              default: 5
-            },
-            maxRecentMemories: {
-              type: 'number',
-              description: 'Maximum number of recent memories to include',
-              default: 10
-            },
-            enableCaching: {
-              type: 'boolean',
-              description: 'Enable context caching for performance',
-              default: true
             }
           }
         }
       },
       {
-        name: 'search_memories',
-        description: '🔍 ENHANCED: Search project memories with fuzzy matching, tag-based search, and semantic similarity',
-        inputSchema: {
-          type: 'object',
-          properties: {
-            query: { type: 'string', description: 'Search query (supports fuzzy matching)' },
-            limit: { type: 'number', description: 'Maximum results', default: 10 },
-            fuzzy: { 
-              type: 'boolean', 
-              description: 'Enable fuzzy matching for broader results - NEW FEATURE', 
-              default: true 
-            },
-            tagSearch: { 
-              type: 'boolean', 
-              description: 'Enable tag-based search with smart mappings - NEW FEATURE', 
-              default: true 
-            },
-            semanticSearch: { 
-              type: 'boolean', 
-              description: 'Enable semantic similarity search - NEW FEATURE', 
-              default: true 
-            },
-            minScore: { 
-              type: 'number', 
-              description: 'Minimum relevance score (0.0-1.0)', 
-              default: 0.3 
-            }
-          },
-          required: ['query']
-        }
-      },
-      {
         name: 'add_memory',
-        description: '🧠 ENHANCED: Add memory with real-time indexing for immediate searchability',
+        description: '🧠 Add memory to project CLAUDE.md file (immediately available in context)',
         inputSchema: {
           type: 'object',
           properties: {
-            type: { 
-              type: 'string', 
-              enum: ['observation', 'entity', 'relation', 'preference'],
-              description: 'Type of memory'
-            },
-            content: { type: 'object', description: 'Memory content' },
+            content: { type: 'string', description: 'Memory content' },
             tags: {
               type: 'array',
               items: { type: 'string' },
-              description: 'Tags for enhanced searchability (use specific terms for better results)'
+              description: 'Optional tags for organization'
             }
           },
-          required: ['type', 'content']
+          required: ['content']
+        }
+      },
+      {
+        name: 'add_quick_memory',
+        description: '💡 Add quick memory note (like Claude Code # syntax)',
+        inputSchema: {
+          type: 'object',
+          properties: {
+            content: { type: 'string', description: 'Quick memory content' }
+          },
+          required: ['content']
+        }
+      },
+      {
+        name: 'list_recent_memories',
+        description: '📋 List recent memory entries from CLAUDE.md files',
+        inputSchema: {
+          type: 'object',
+          properties: {
+            limit: { type: 'number', description: 'Number of recent entries', default: 10 }
+          }
+        }
+      },
+      {
+        name: 'get_memory_status',
+        description: '📁 Get status of memory files (CLAUDE.md hierarchy)',
+        inputSchema: {
+          type: 'object',
+          properties: {}
+        }
+      },
+      {
+        name: 'reload_memories',
+        description: '🔄 Reload memory files (useful if edited externally)',
+        inputSchema: {
+          type: 'object',
+          properties: {}
         }
       },
       
-      // ================== NEW ENHANCED TOOLS ==================
+      // ================== CONTEXT MANAGEMENT ==================
       {
         name: 'get_context_stats',
-        description: '📊 NEW: Get detailed context generation and performance statistics',
+        description: '📊 Get detailed context generation and performance statistics',
         inputSchema: {
           type: 'object',
           properties: {}
@@ -171,44 +151,22 @@ export class EnhancedToolHandler {
       },
       {
         name: 'get_documentation_status',
-        description: '📄 NEW: Get status of auto-loaded project documentation',
+        description: '📄 Get status of auto-loaded project documentation',
         inputSchema: {
           type: 'object',
           properties: {}
         }
       },
       {
-        name: 'search_memories_advanced',
-        description: '🎯 NEW: Advanced memory search with detailed analysis and query optimization',
-        inputSchema: {
-          type: 'object',
-          properties: {
-            query: { type: 'string', description: 'Search query' },
-            analyzeQuery: { 
-              type: 'boolean', 
-              description: 'Provide detailed query analysis and suggestions', 
-              default: true 
-            },
-            showMatchDetails: { 
-              type: 'boolean', 
-              description: 'Show detailed match information for debugging', 
-              default: true 
-            },
-            limit: { type: 'number', description: 'Maximum results', default: 10 }
-          },
-          required: ['query']
-        }
-      },
-      {
         name: 'clear_context_cache',
-        description: '🗑️  NEW: Clear context cache to force fresh context generation',
+        description: '🗑️  Clear context cache to force fresh context generation',
         inputSchema: {
           type: 'object',
           properties: {}
         }
       },
       
-      // ================== EXISTING TOOLS (Enhanced) ==================
+      // ================== FILE OPERATIONS ==================
       {
         name: 'read_file',
         description: 'Read the contents of a file',
@@ -310,31 +268,33 @@ export class EnhancedToolHandler {
           required: ['path', 'old_content', 'new_content']
         }
       },
+      
+      // ================== CODE SEARCH ==================
       {
         name: 'search_code',
-        description: 'Search for code patterns in project files with advanced filtering',
+        description: 'Search for code patterns in project files',
         inputSchema: {
           type: 'object',
           properties: {
             pattern: { type: 'string', description: 'Search pattern (text or regex)' },
-            directory: { type: 'string', description: 'Directory to search in (default: project root)' },
-            filePattern: { type: 'string', description: 'File glob pattern (e.g., "*.ts", "**/*.js")' },
+            directory: { type: 'string', description: 'Directory to search in' },
+            filePattern: { type: 'string', description: 'File glob pattern' },
             excludePatterns: { 
               type: 'array', 
               items: { type: 'string' },
-              description: 'Patterns to exclude from search'
+              description: 'Patterns to exclude'
             },
-            caseSensitive: { type: 'boolean', description: 'Case sensitive search', default: false },
-            regex: { type: 'boolean', description: 'Treat pattern as regex', default: false },
-            contextLines: { type: 'number', description: 'Number of context lines around matches', default: 2 },
-            maxResults: { type: 'number', description: 'Maximum results to return', default: 100 }
+            caseSensitive: { type: 'boolean', default: false },
+            regex: { type: 'boolean', default: false },
+            contextLines: { type: 'number', default: 2 },
+            maxResults: { type: 'number', default: 100 }
           },
           required: ['pattern']
         }
       },
       {
         name: 'search_symbols',
-        description: 'Search for symbol definitions (functions, classes, variables)',
+        description: 'Search for symbol definitions',
         inputSchema: {
           type: 'object',
           properties: {
@@ -346,15 +306,16 @@ export class EnhancedToolHandler {
       },
       {
         name: 'search_todos',
-        description: 'Search for TODO/FIXME/NOTE comments in code',
+        description: 'Search for TODO/FIXME/NOTE comments',
         inputSchema: {
           type: 'object',
           properties: {
-            includeNotes: { type: 'boolean', description: 'Include NOTE/INFO/WARNING comments', default: false }
+            includeNotes: { type: 'boolean', default: false }
           }
         }
       },
-      // Git tools
+      
+      // ================== GIT OPERATIONS ==================
       {
         name: 'git_status',
         description: 'Get git repository status',
@@ -366,7 +327,7 @@ export class EnhancedToolHandler {
         inputSchema: {
           type: 'object',
           properties: {
-            staged: { type: 'boolean', description: 'Show staged changes', default: false }
+            staged: { type: 'boolean', default: false }
           }
         }
       },
@@ -400,41 +361,47 @@ export class EnhancedToolHandler {
       }
     ];
   }
+
   /**
-   * Handle enhanced tool calls with advanced features
+   * Handle enhanced tool calls with file-based memory
    */
   private async handleEnhancedToolCall(name: string, args: any): Promise<any> {
     const startTime = Date.now();
     
     try {
-      // Log tool usage for performance monitoring
-      console.error(`🔧 Enhanced tool call: ${name}${args.query ? ` ("${args.query}")` : ''}`);
+      console.error(`🔧 Tool call: ${name}`);
       
       switch (name) {
-        // ================== ENHANCED CORE TOOLS ==================
+        // ================== FILE-BASED MEMORY TOOLS ==================
         case 'get_context':
-          return await this.handleGetContextEnhanced(args);
-        
-        case 'search_memories':
-          return await this.handleSearchMemoriesEnhanced(args);
+          return await this.handleGetContext(args);
         
         case 'add_memory':
-          return await this.handleAddMemoryEnhanced(args);
+          return await this.handleAddMemory(args);
         
-        // ================== NEW ENHANCED TOOLS ==================
+        case 'add_quick_memory':
+          return await this.handleAddQuickMemory(args);
+        
+        case 'list_recent_memories':
+          return await this.handleListRecentMemories(args);
+        
+        case 'get_memory_status':
+          return await this.handleGetMemoryStatus();
+        
+        case 'reload_memories':
+          return await this.handleReloadMemories();
+        
+        // ================== CONTEXT MANAGEMENT ==================
         case 'get_context_stats':
           return await this.handleGetContextStats();
         
         case 'get_documentation_status':
           return await this.handleGetDocumentationStatus();
         
-        case 'search_memories_advanced':
-          return await this.handleSearchMemoriesAdvanced(args);
-        
         case 'clear_context_cache':
           return await this.handleClearContextCache();
         
-        // ================== EXISTING FILE TOOLS ==================
+        // ================== FILE OPERATIONS ==================
         case 'read_file':
           return await this.handleReadFile(args);
         
@@ -468,7 +435,7 @@ export class EnhancedToolHandler {
         case 'search_todos':
           return await this.handleSearchTodos(args);
         
-        // ================== GIT TOOLS ==================
+        // ================== GIT OPERATIONS ==================
         case 'git_status':
           return await this.handleGitStatus();
         
@@ -482,21 +449,17 @@ export class EnhancedToolHandler {
           return await this.handleGitCommit(args);
         
         default:
-          throw new Error(`Unknown enhanced tool: ${name}`);
+          throw new Error(`Unknown tool: ${name}`);
       }
     } catch (error) {
       const duration = Date.now() - startTime;
-      console.error(`❌ Enhanced tool ${name} failed in ${duration}ms:`, error);
+      console.error(`❌ Tool ${name} failed in ${duration}ms:`, error);
       
       return {
         content: [
           {
             type: 'text',
-            text: `❌ Enhanced Tool Error: ${error instanceof Error ? error.message : String(error)}\n\n` +
-                  `If you're experiencing issues with memory search, try:\n` +
-                  `• Use more specific terms (e.g., "TeamVoiceChat" instead of "project")\n` +
-                  `• Try tag-based search (e.g., "critical", "webrtc", "yusuf")\n` +
-                  `• Use the search_memories_advanced tool for detailed diagnostics`
+            text: `❌ Error: ${error instanceof Error ? error.message : String(error)}`
           }
         ],
         isError: true
@@ -504,28 +467,17 @@ export class EnhancedToolHandler {
     }
   }
 
-  // ================== ENHANCED TOOL IMPLEMENTATIONS ==================
+  // ================== FILE-BASED MEMORY IMPLEMENTATIONS ==================
 
-  /**
-   * Enhanced get_context with automatic documentation loading
-   */
-  private async handleGetContextEnhanced(args: any): Promise<any> {
-    console.error('🚀 Generating enhanced context with auto-documentation loading...');
-    
+  private async handleGetContext(args: any): Promise<any> {
     const context = await this.contextManager.generateEnhancedContext({
       tokenBudget: args.tokenBudget || 25000,
       includeDocumentation: args.includeDocumentation !== false,
-      includeRecentMemories: args.includeRecentMemories !== false,
-      includeFileContent: args.includeFileContent !== false,
-      maxRecentFiles: args.maxRecentFiles || 5,
-      maxRecentMemories: args.maxRecentMemories || 10,
-      enableCaching: args.enableCaching !== false
+      includeFileContent: args.includeFileContent !== false
     });
     
-    // Update context with this interaction
     this.contextManager.updateContext('context_generated', {
-      tokenBudget: args.tokenBudget,
-      includeDocumentation: args.includeDocumentation !== false
+      tokenBudget: args.tokenBudget
     });
     
     return {
@@ -538,80 +490,75 @@ export class EnhancedToolHandler {
     };
   }
 
-  /**
-   * Enhanced memory search with fuzzy matching and advanced features
-   */
-  private async handleSearchMemoriesEnhanced(args: any): Promise<any> {
-    console.error(`🔍 Enhanced memory search: "${args.query}"`);
-    
-    const searchResult = await this.contextManager.searchMemoriesEnhanced(args.query, {
-      limit: args.limit || 10,
-      fuzzy: args.fuzzy !== false,
-      tagSearch: args.tagSearch !== false,
-      semanticSearch: args.semanticSearch !== false,
-      minScore: args.minScore || 0.3
-    });
-    
-    // Update context
-    this.contextManager.updateContext('memory_search', {
-      query: args.query,
-      results: searchResult.results.length,
-      strategies: searchResult.strategiesUsed
-    });
-    
-    return {
-      content: [
-        {
-          type: 'text',
-          text: this.contextManager.memorySearchEngine.formatSearchResults(searchResult)
-        }
-      ]
-    };
-  }
-
-  /**
-   * Add memory with real-time indexing
-   */
-  private async handleAddMemoryEnhanced(args: any): Promise<any> {
-    console.error(`🧠 Adding memory with real-time indexing: ${args.type}`);
-    
-    const memoryId = this.contextManager.addMemoryWithRealTimeIndexing(
-      args.type,
+  private async handleAddMemory(args: any): Promise<any> {
+    const result = await this.contextManager.addMemory(
       args.content,
       args.tags || []
     );
     
-    // Test immediate searchability
-    const testSearch = await this.contextManager.searchMemoriesEnhanced(
-      args.tags?.[0] || Object.keys(args.content)[0] || 'test',
-      { limit: 1 }
-    );
-    
-    const isImmediatelySearchable = testSearch.results.some(r => r.memory.id === memoryId);
-    
     return {
       content: [
         {
           type: 'text',
-          text: `✅ Memory added successfully!\n\n` +
-                `📋 **Memory Details:**\n` +
-                `• **ID:** ${memoryId}\n` +
-                `• **Type:** ${args.type}\n` +
-                `• **Tags:** ${args.tags?.join(', ') || 'none'}\n` +
-                `• **Real-time Indexing:** ${isImmediatelySearchable ? '✅ Active' : '⚠️  Pending'}\n\n` +
-                `🔍 **Search Tips:**\n` +
-                `• Use specific tags for better findability\n` +
-                `• Try searching with: "${args.tags?.[0] || Object.keys(args.content)[0]}"`
+          text: `✅ ${result}\n\n💡 Memory is immediately available in context. Use get_context to see it.`
         }
       ]
     };
   }
 
-  /**
-   * Get context generation statistics
-   */
+  private async handleAddQuickMemory(args: any): Promise<any> {
+    const result = await this.contextManager.addQuickMemory(args.content);
+    
+    return {
+      content: [
+        {
+          type: 'text',
+          text: `✅ ${result}\n\n💡 Quick memory added and immediately available in context.`
+        }
+      ]
+    };
+  }
+
+  private async handleListRecentMemories(args: any): Promise<any> {
+    const recentMemories = this.contextManager.getRecentMemories(args.limit || 10);
+    
+    return {
+      content: [
+        {
+          type: 'text',
+          text: `📋 **Recent Memory Entries:**\n\n${recentMemories}`
+        }
+      ]
+    };
+  }
+
+  private async handleGetMemoryStatus(): Promise<any> {
+    const status = this.contextManager.getMemoryStatus();
+    
+    return {
+      content: [
+        {
+          type: 'text',
+          text: status
+        }
+      ]
+    };
+  }
+
+  private async handleReloadMemories(): Promise<any> {
+    await this.contextManager.reloadMemories();
+    
+    return {
+      content: [
+        {
+          type: 'text',
+          text: `🔄 Memory files reloaded successfully!\n\nAll CLAUDE.md files have been refreshed and are available in context.`
+        }
+      ]
+    };
+  }
+
   private async handleGetContextStats(): Promise<any> {
-    const stats = this.contextManager.getContextStats();
     const performanceReport = this.contextManager.getPerformanceReport();
     
     return {
@@ -624,9 +571,6 @@ export class EnhancedToolHandler {
     };
   }
 
-  /**
-   * Get documentation loading status
-   */
   private async handleGetDocumentationStatus(): Promise<any> {
     const context = this.contextManager.getContext();
     const docResult = context.documentation;
@@ -637,12 +581,7 @@ export class EnhancedToolHandler {
     if (docResult.loadedDocs.length > 0) {
       statusText += `✅ **Auto-loaded Documents (${docResult.loadedDocs.length}):**\n`;
       for (const doc of docResult.loadedDocs) {
-        const docObj = docResult.documents.find(d => d.file === doc);
-        if (docObj) {
-          statusText += `   • ${doc} (${docObj.tokenCount.toLocaleString()} tokens, priority: ${docObj.priority})\n`;
-        } else {
-          statusText += `   • ${doc}\n`;
-        }
+        statusText += `   • ${doc}\n`;
       }
       statusText += `\n`;
     }
@@ -659,15 +598,6 @@ export class EnhancedToolHandler {
     statusText += `   • Documentation Tokens: ${docResult.totalTokens.toLocaleString()}\n`;
     statusText += `   • Available in Context: ${docResult.documents.length > 0 ? '✅ Yes' : '❌ No'}\n`;
     
-    if (docResult.loadedDocs.length === 0 && docResult.skippedDocs.length === 0) {
-      statusText += `\n❌ **No Documentation Found**\n`;
-      statusText += `The system looks for these files:\n`;
-      statusText += `• CLAUDE.md, CLAUDE_IMPLEMENTATION_PLAN.md\n`;
-      statusText += `• README.md, DOCS.md, PROJECT.md\n`;
-      statusText += `• .claude/instructions.md\n`;
-      statusText += `• docs/CLAUDE.md, docs/README.md\n`;
-    }
-    
     statusText += `\n💡 **Tips:**\n`;
     statusText += `• Documentation is automatically loaded with get_context\n`;
     statusText += `• Higher priority files (CLAUDE.md) are loaded first\n`;
@@ -683,79 +613,6 @@ export class EnhancedToolHandler {
     };
   }
 
-  /**
-   * Advanced memory search with detailed analysis
-   */
-  private async handleSearchMemoriesAdvanced(args: any): Promise<any> {
-    console.error(`🎯 Advanced memory search: "${args.query}"`);
-    
-    const searchResult = await this.contextManager.searchMemoriesEnhanced(args.query, {
-      limit: args.limit || 10,
-      fuzzy: true,
-      tagSearch: true,
-      semanticSearch: true,
-      minScore: 0.1 // Lower threshold for analysis
-    });
-    
-    let advancedText = this.contextManager.memorySearchEngine.formatSearchResults(searchResult);
-    
-    if (args.analyzeQuery !== false) {
-      advancedText += `\n\n🧠 **Query Analysis & Optimization Suggestions:**\n`;
-      advancedText += `━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n`;
-      
-      const analysis = searchResult.queryAnalysis;
-      advancedText += `• **Query Type:** ${analysis.queryType}\n`;
-      advancedText += `• **Confidence:** ${(analysis.confidence * 100).toFixed(1)}%\n`;
-      
-      if (analysis.extractedTags.length > 0) {
-        advancedText += `• **Smart Tags:** ${analysis.extractedTags.join(', ')}\n`;
-      }
-      
-      // Provide suggestions based on results
-      if (searchResult.results.length === 0) {
-        advancedText += `\n❌ **No Results - Try These Suggestions:**\n`;
-        advancedText += `• Use broader terms: "${args.query.split(' ')[0]}" instead of "${args.query}"\n`;
-        advancedText += `• Search by identifiers: "TeamVoiceChat", "CLAUDE_IMPLEMENTATION_PLAN"\n`;
-        advancedText += `• Use tag keywords: "critical", "issues", "webrtc", "yusuf"\n`;
-        advancedText += `• Try partial matches: individual words from your query\n`;
-      } else if (searchResult.results.length < 3) {
-        advancedText += `\n⚠️ **Few Results - Consider:**\n`;
-        advancedText += `• Reducing minScore (currently using smart defaults)\n`;
-        advancedText += `• Using wildcard terms or broader concepts\n`;
-        advancedText += `• Checking for typos in your query\n`;
-      } else {
-        advancedText += `\n✅ **Good Results - Query is well-optimized**\n`;
-      }
-    }
-    
-    if (args.showMatchDetails !== false && searchResult.results.length > 0) {
-      advancedText += `\n\n🔍 **Detailed Match Analysis:**\n`;
-      advancedText += `━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n`;
-      
-      for (let i = 0; i < Math.min(3, searchResult.results.length); i++) {
-        const result = searchResult.results[i];
-        advancedText += `**Result ${i + 1}:**\n`;
-        advancedText += `• Score: ${(result.score * 100).toFixed(1)}% via ${result.strategy}\n`;
-        if (result.matchDetails) {
-          advancedText += `• Match: ${result.matchDetails.join('; ')}\n`;
-        }
-        advancedText += `• Tags: ${result.memory.tags.join(', ') || 'none'}\n\n`;
-      }
-    }
-    
-    return {
-      content: [
-        {
-          type: 'text',
-          text: advancedText
-        }
-      ]
-    };
-  }
-
-  /**
-   * Clear context cache
-   */
   private async handleClearContextCache(): Promise<any> {
     this.contextManager.clearCache();
     
@@ -768,17 +625,13 @@ export class EnhancedToolHandler {
               `• Context generation cache\n` +
               `• File content cache\n` +
               `• Recent files list\n\n` +
-              `Next get_context call will be freshly generated with:\n` +
-              `• Latest project documentation\n` +
-              `• Updated memory index\n` +
-              `• Current file states\n\n` +
-              `💡 This may slightly increase the next context generation time.`
+              `Next get_context call will be freshly generated.`
         }
       ]
     };
   }
 
-  // ================== EXISTING TOOL IMPLEMENTATIONS (Enhanced with logging) ==================
+  // ================== FILE OPERATIONS (keep existing) ==================
 
   private async handleReadFile(args: any): Promise<any> {
     const content = await this.fileHandler.readFile(args.path);
@@ -796,7 +649,7 @@ export class EnhancedToolHandler {
 
   private async handleWriteFile(args: any): Promise<any> {
     await this.fileHandler.writeFile(args.path, args.content);
-    this.contextManager.updateContext('file_written', { path: args.path, size: args.content.length });
+    this.contextManager.updateContext('file_written', { path: args.path });
     
     return {
       content: [
@@ -810,7 +663,6 @@ export class EnhancedToolHandler {
 
   private async handleListDirectory(args: any): Promise<any> {
     const entries = await this.fileHandler.listDirectory(args.path);
-    this.contextManager.updateContext('directory_listed', { path: args.path });
     
     return {
       content: [
@@ -824,7 +676,6 @@ export class EnhancedToolHandler {
 
   private async handleCreateDirectory(args: any): Promise<any> {
     await this.fileHandler.createDirectory(args.path);
-    this.contextManager.updateContext('directory_created', { path: args.path });
     
     return {
       content: [
@@ -838,7 +689,6 @@ export class EnhancedToolHandler {
 
   private async handleDeleteFile(args: any): Promise<any> {
     await this.fileHandler.deleteFile(args.path);
-    this.contextManager.updateContext('file_deleted', { path: args.path });
     
     return {
       content: [
@@ -852,7 +702,6 @@ export class EnhancedToolHandler {
 
   private async handleMoveFile(args: any): Promise<any> {
     await this.fileHandler.moveFile(args.source, args.destination);
-    this.contextManager.updateContext('file_moved', { source: args.source, destination: args.destination });
     
     return {
       content: [
@@ -866,7 +715,6 @@ export class EnhancedToolHandler {
 
   private async handleReadMultipleFiles(args: any): Promise<any> {
     const filesContent = await this.fileHandler.readMultipleFiles(args.paths);
-    this.contextManager.updateContext('multiple_files_read', { count: args.paths.length });
     
     const successfulReads = filesContent.filter(f => f.content !== null);
     const failedReads = filesContent.filter(f => f.content === null);
@@ -905,12 +753,6 @@ export class EnhancedToolHandler {
       args.expected_replacements || 1
     );
     
-    this.contextManager.updateContext('file_edited', { 
-      path: args.path, 
-      success: editResult.success,
-      replacements: editResult.success ? args.expected_replacements : 0
-    });
-    
     return {
       content: [
         {
@@ -925,6 +767,7 @@ export class EnhancedToolHandler {
   private async handleSearchCode(args: any): Promise<any> {
     const projectInfo = this.contextManager.getProjectInfo();
     const path = await import('path');
+    
     const searchOptions = {
       pattern: args.pattern,
       directory: args.directory || projectInfo?.root || process.cwd(),
@@ -934,17 +777,12 @@ export class EnhancedToolHandler {
       regex: args.regex || false,
       contextLines: args.contextLines ?? 2,
       maxResults: args.maxResults || 100,
-      includeHidden: args.includeHidden || false,
-      followSymlinks: args.followSymlinks || false
+      includeHidden: false,
+      followSymlinks: false
     };
     
     const searchResults = await this.fileHandler.searchCode(searchOptions);
-    this.contextManager.updateContext('code_searched', { 
-      pattern: args.pattern, 
-      matches: searchResults.totalMatches 
-    });
     
-    // Format results for display (keeping existing format)
     let searchResultText = `🔍 Search Results\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n`;
     searchResultText += `Pattern: "${args.pattern}"${args.regex ? ' (regex)' : ''}\n`;
     searchResultText += `Files searched: ${searchResults.totalFiles}\n`;
@@ -995,11 +833,6 @@ export class EnhancedToolHandler {
       args.filePattern
     );
     
-    this.contextManager.updateContext('symbols_searched', { 
-      symbol: args.symbolName, 
-      matches: symbolResults.length 
-    });
-    
     let symbolText = `🔎 Symbol Search: "${args.symbolName}"\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n`;
     symbolText += `Found ${symbolResults.length} definition(s)\n\n`;
     
@@ -1020,7 +853,6 @@ export class EnhancedToolHandler {
 
   private async handleSearchTodos(args: any): Promise<any> {
     const todoResults = await this.fileHandler.searchTodos(args.includeNotes);
-    this.contextManager.updateContext('todos_searched', { matches: todoResults.length });
     
     let todoText = `📝 TODO/FIXME Search\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n`;
     todoText += `Found ${todoResults.length} item(s)\n\n`;
@@ -1065,7 +897,6 @@ export class EnhancedToolHandler {
 
   private async handleGitStatus(): Promise<any> {
     const status = await this.gitHandler.getStatus();
-    this.contextManager.updateContext('git_status_checked', { dirty: status.files?.length > 0 });
     
     return {
       content: [
@@ -1079,7 +910,6 @@ export class EnhancedToolHandler {
 
   private async handleGitDiff(args: any): Promise<any> {
     const diff = await this.gitHandler.getDiff(args.staged);
-    this.contextManager.updateContext('git_diff_checked', { staged: args.staged });
     
     return {
       content: [
@@ -1093,7 +923,6 @@ export class EnhancedToolHandler {
 
   private async handleGitAdd(args: any): Promise<any> {
     await this.gitHandler.addFiles(args.files);
-    this.contextManager.updateContext('git_files_added', { files: args.files });
     
     return {
       content: [
@@ -1107,7 +936,6 @@ export class EnhancedToolHandler {
 
   private async handleGitCommit(args: any): Promise<any> {
     const commitResult = await this.gitHandler.commit(args.message);
-    this.contextManager.updateContext('git_commit_created', { message: args.message });
     
     return {
       content: [

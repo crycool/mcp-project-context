@@ -1,286 +1,164 @@
 import * as fs from 'fs/promises';
 import * as path from 'path';
 
-export interface ProjectDocument {
-  file: string;
-  path: string;
-  content: string;
-  size: number;
-  priority: number;
-  tokenCount: number;
-  lastModified: Date;
-}
-
 export interface DocumentationLoadResult {
-  documents: ProjectDocument[];
+  documents: DocumentationFile[];
   totalTokens: number;
   loadedDocs: string[];
   skippedDocs: string[];
 }
 
+export interface DocumentationFile {
+  file: string;
+  content: string;
+  priority: number;
+  tokenCount: number;
+}
+
 /**
- * Professional Documentation Loader for MCP Project Context Manager
- * Automatically discovers and loads project documentation files with intelligent prioritization
+ * Handles automatic documentation discovery and loading
  */
 export class DocumentationLoader {
-  private static readonly PROJECT_DOC_FILES = [
-    // Primary documentation files (highest priority)
-    { pattern: 'CLAUDE.md', priority: 10 },
-    { pattern: 'CLAUDE_IMPLEMENTATION_PLAN.md', priority: 9 },
-    { pattern: 'INSTRUCTIONS.md', priority: 8 },
-    
-    // Secondary documentation files
-    { pattern: 'README.md', priority: 7 },
-    { pattern: 'DOCS.md', priority: 6 },
-    { pattern: 'PROJECT.md', priority: 6 },
-    
-    // Directory-based documentation
-    { pattern: '.claude/instructions.md', priority: 8 },
-    { pattern: 'docs/README.md', priority: 5 },
-    { pattern: 'docs/CLAUDE.md', priority: 7 },
-    { pattern: 'docs/PROJECT.md', priority: 5 },
-    
-    // Configuration and setup documentation
-    { pattern: 'SETUP.md', priority: 4 },
-    { pattern: 'INSTALL.md', priority: 4 },
-    { pattern: 'CONTRIBUTING.md', priority: 3 },
-    { pattern: 'CHANGELOG.md', priority: 2 },
-    { pattern: 'TROUBLESHOOTING.md', priority: 3 }
-  ];
-
-  private rootPath: string;
-  private tokenEstimateCache: Map<string, number> = new Map();
-
-  constructor(rootPath: string) {
-    this.rootPath = rootPath;
+  private projectRoot: string;
+  
+  // Documentation file priorities (higher = more important)
+  private readonly DOCUMENTATION_PRIORITIES: Record<string, number> = {
+    'CLAUDE.md': 100,
+    'CLAUDE_IMPLEMENTATION_PLAN.md': 95,
+    'README.md': 90,
+    'DOCS.md': 85,
+    'PROJECT.md': 80,
+    '.claude/instructions.md': 75,
+    'docs/CLAUDE.md': 70,
+    'docs/README.md': 65,
+    'DOCUMENTATION.md': 60,
+    'GUIDE.md': 55
+  };
+  
+  constructor(projectRoot: string) {
+    this.projectRoot = projectRoot;
   }
-
+  
   /**
-   * Automatically discover and load project documentation files
+   * Load project documentation with smart token budget management
    */
-  async loadProjectDocumentation(tokenBudget: number = 20000): Promise<DocumentationLoadResult> {
-    const discoveredDocs = await this.discoverDocumentationFiles();
-    const processedDocs = await this.processDocumentationFiles(discoveredDocs);
-    
-    // Sort by priority (descending) and size (ascending for same priority)
-    processedDocs.sort((a, b) => {
-      if (a.priority !== b.priority) return b.priority - a.priority;
-      return a.tokenCount - b.tokenCount;
-    });
-
-    return this.selectDocumentsByTokenBudget(processedDocs, tokenBudget);
-  }
-
-  /**
-   * Discover all available documentation files in the project
-   */
-  private async discoverDocumentationFiles(): Promise<Array<{path: string, priority: number}>> {
-    const discoveredFiles: Array<{path: string, priority: number}> = [];
-
-    for (const docSpec of DocumentationLoader.PROJECT_DOC_FILES) {
-      const filePath = path.join(this.rootPath, docSpec.pattern);
-      
-      try {
-        const stats = await fs.stat(filePath);
-        if (stats.isFile() && stats.size > 0 && stats.size < 1024 * 1024) { // Max 1MB
-          discoveredFiles.push({
-            path: filePath,
-            priority: docSpec.priority
-          });
-        }
-      } catch (error) {
-        // File doesn't exist, continue
-      }
-    }
-
-    // Search for additional CLAUDE.md files in subdirectories
-    await this.searchSubdirectoriesForClaudeFiles(discoveredFiles);
-
-    return discoveredFiles;
-  }
-
-  /**
-   * Search subdirectories for additional CLAUDE.md files
-   */
-  private async searchSubdirectoriesForClaudeFiles(
-    discoveredFiles: Array<{path: string, priority: number}>
-  ): Promise<void> {
-    try {
-      const subdirs = ['src', 'docs', 'documentation', '.github', 'config'];
-      
-      for (const subdir of subdirs) {
-        const subdirPath = path.join(this.rootPath, subdir);
-        
-        try {
-          const subdirStats = await fs.stat(subdirPath);
-          if (!subdirStats.isDirectory()) continue;
-
-          const claudeFile = path.join(subdirPath, 'CLAUDE.md');
-          try {
-            const stats = await fs.stat(claudeFile);
-            if (stats.isFile() && stats.size > 0) {
-              discoveredFiles.push({
-                path: claudeFile,
-                priority: 7 // High priority for subdirectory CLAUDE files
-              });
-            }
-          } catch {
-            // File doesn't exist in this subdirectory
-          }
-        } catch {
-          // Subdirectory doesn't exist
-        }
-      }
-    } catch (error) {
-      console.error('Error searching subdirectories for CLAUDE files:', error);
-    }
-  }
-
-  /**
-   * Process discovered files to extract metadata and content
-   */
-  private async processDocumentationFiles(
-    discoveredFiles: Array<{path: string, priority: number}>
-  ): Promise<ProjectDocument[]> {
-    const processedDocs: ProjectDocument[] = [];
-
-    for (const fileSpec of discoveredFiles) {
-      try {
-        const content = await fs.readFile(fileSpec.path, 'utf-8');
-        const stats = await fs.stat(fileSpec.path);
-        const tokenCount = this.estimateTokenCount(content);
-
-        const doc: ProjectDocument = {
-          file: path.basename(fileSpec.path),
-          path: fileSpec.path,
-          content,
-          size: stats.size,
-          priority: fileSpec.priority,
-          tokenCount,
-          lastModified: stats.mtime
-        };
-
-        processedDocs.push(doc);
-      } catch (error) {
-        console.error(`Failed to process documentation file ${fileSpec.path}:`, error);
-      }
-    }
-
-    return processedDocs;
-  }
-
-  /**
-   * Select documents that fit within the token budget
-   */
-  private selectDocumentsByTokenBudget(
-    processedDocs: ProjectDocument[], 
-    tokenBudget: number
-  ): DocumentationLoadResult {
+  async loadProjectDocumentation(tokenBudget: number): Promise<DocumentationLoadResult> {
     const result: DocumentationLoadResult = {
       documents: [],
       totalTokens: 0,
       loadedDocs: [],
       skippedDocs: []
     };
-
-    // Reserve 20% of budget for other context elements
-    const documentBudget = Math.floor(tokenBudget * 0.8);
-    let usedTokens = 0;
-
-    for (const doc of processedDocs) {
-      if (usedTokens + doc.tokenCount <= documentBudget) {
-        result.documents.push(doc);
-        result.loadedDocs.push(doc.file);
-        usedTokens += doc.tokenCount;
-      } else {
-        result.skippedDocs.push(doc.file);
+    
+    // Find all documentation files
+    const docFiles = await this.findDocumentationFiles();
+    
+    // Sort by priority
+    docFiles.sort((a, b) => b.priority - a.priority);
+    
+    // Load files within token budget
+    for (const docFile of docFiles) {
+      try {
+        const content = await fs.readFile(docFile.path, 'utf-8');
+        const tokenCount = this.estimateTokens(content);
+        
+        if (result.totalTokens + tokenCount <= tokenBudget) {
+          result.documents.push({
+            file: docFile.relativePath,
+            content,
+            priority: docFile.priority,
+            tokenCount
+          });
+          result.totalTokens += tokenCount;
+          result.loadedDocs.push(docFile.relativePath);
+        } else {
+          result.skippedDocs.push(docFile.relativePath);
+        }
+      } catch (error) {
+        // File doesn't exist or can't be read
+        continue;
       }
     }
-
-    result.totalTokens = usedTokens;
+    
     return result;
   }
-
+  
   /**
-   * Estimate token count for content (4 characters ≈ 1 token)
+   * Find all documentation files in the project
    */
-  private estimateTokenCount(content: string): number {
-    // Check cache first
-    const contentHash = this.hashContent(content);
-    const cached = this.tokenEstimateCache.get(contentHash);
-    if (cached !== undefined) return cached;
-
-    // Rough estimation: 1 token ≈ 4 characters for English text
-    // More sophisticated estimation for code/markdown
-    const lines = content.split('\n');
-    let tokens = 0;
-
-    for (const line of lines) {
-      if (line.trim().length === 0) {
-        tokens += 1; // Empty lines
-      } else if (line.trim().startsWith('#')) {
-        tokens += Math.ceil(line.length / 3); // Headers are more token-dense
-      } else if (line.trim().startsWith('```')) {
-        tokens += 3; // Code block markers
-      } else if (line.includes('```')) {
-        tokens += Math.ceil(line.length / 2.5); // Inline code
-      } else {
-        tokens += Math.ceil(line.length / 4); // Regular text
+  private async findDocumentationFiles(): Promise<Array<{
+    path: string;
+    relativePath: string;
+    priority: number;
+  }>> {
+    const docFiles: Array<{
+      path: string;
+      relativePath: string;
+      priority: number;
+    }> = [];
+    
+    // Check for documentation files
+    for (const [fileName, priority] of Object.entries(this.DOCUMENTATION_PRIORITIES)) {
+      const filePath = path.join(this.projectRoot, fileName);
+      try {
+        await fs.access(filePath);
+        docFiles.push({
+          path: filePath,
+          relativePath: fileName,
+          priority
+        });
+      } catch {
+        // File doesn't exist
       }
     }
-
-    // Cache the result
-    this.tokenEstimateCache.set(contentHash, tokens);
-    return tokens;
-  }
-
-  /**
-   * Create a simple hash of content for caching
-   */
-  private hashContent(content: string): string {
-    let hash = 0;
-    for (let i = 0; i < content.length; i++) {
-      const char = content.charCodeAt(i);
-      hash = ((hash << 5) - hash) + char;
-      hash = hash & hash; // Convert to 32-bit integer
+    
+    // Also check for .md files in root (lower priority)
+    try {
+      const rootFiles = await fs.readdir(this.projectRoot);
+      for (const file of rootFiles) {
+        if (file.endsWith('.md') && !this.DOCUMENTATION_PRIORITIES[file]) {
+          const filePath = path.join(this.projectRoot, file);
+          const stats = await fs.stat(filePath);
+          if (stats.isFile()) {
+            docFiles.push({
+              path: filePath,
+              relativePath: file,
+              priority: 50 // Default priority for other .md files
+            });
+          }
+        }
+      }
+    } catch {
+      // Error reading directory
     }
-    return hash.toString();
+    
+    return docFiles;
   }
-
+  
   /**
    * Format documentation for context inclusion
    */
-  formatDocumentationForContext(documents: ProjectDocument[]): string {
-    let formattedContent = '';
-
-    for (const doc of documents) {
-      const relativePath = path.relative(this.rootPath, doc.path);
-      formattedContent += `\n## 📄 ${doc.file}\n`;
-      formattedContent += `*Path: ${relativePath} | Priority: ${doc.priority} | Tokens: ~${doc.tokenCount}*\n\n`;
-      formattedContent += doc.content;
-      formattedContent += '\n\n---\n';
+  formatDocumentationForContext(documents: DocumentationFile[]): string {
+    if (documents.length === 0) {
+      return '*No documentation files found.*';
     }
-
-    return formattedContent;
+    
+    const sections: string[] = [];
+    
+    for (const doc of documents) {
+      sections.push(`### 📄 ${doc.file}`);
+      sections.push(doc.content);
+      sections.push('');
+    }
+    
+    return sections.join('\n');
   }
-
+  
   /**
-   * Get documentation loading statistics for debugging
+   * Estimate token count for text
    */
-  getLoadingStats(result: DocumentationLoadResult): string {
-    const stats = [
-      `📊 Documentation Loading Statistics`,
-      `━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`,
-      `✅ Loaded Documents: ${result.loadedDocs.length}`,
-      `   ${result.loadedDocs.map(doc => `• ${doc}`).join('\n   ')}`,
-      ``,
-      `⏭️ Skipped Documents: ${result.skippedDocs.length}`,
-      result.skippedDocs.length > 0 ? `   ${result.skippedDocs.map(doc => `• ${doc} (exceeded budget)`).join('\n   ')}` : `   (none)`,
-      ``,
-      `🧮 Token Usage: ${result.totalTokens.toLocaleString()} tokens`,
-      `━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`
-    ].filter(line => line !== '').join('\n');
-
-    return stats;
+  private estimateTokens(text: string): number {
+    // Rough estimation: ~1 token per 4 characters
+    return Math.ceil(text.length / 4);
   }
 }

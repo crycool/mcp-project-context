@@ -2,7 +2,7 @@
 import { Server } from '@modelcontextprotocol/sdk/server/index.js';
 import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
 import { ProjectDiscovery } from './discovery/projectDiscovery.js';
-import { MemoryManager } from './storage/memoryManager.js';
+import { FileBasedMemoryManager } from './storage/fileBasedMemoryManager.js';
 import { ContextManager } from './context/contextManager.js';
 import { FileHandler } from './handlers/fileHandler.js';
 import { GitHandler } from './handlers/gitHandler.js';
@@ -15,7 +15,7 @@ import * as fs from 'fs';
 class MCPProjectContextServer {
   private server: Server;
   private projectDiscovery: ProjectDiscovery;
-  private memoryManager: MemoryManager;
+  private fileBasedMemoryManager: FileBasedMemoryManager;
   private contextManager!: ContextManager;
   private fileHandler!: FileHandler;
   private gitHandler!: GitHandler;
@@ -26,18 +26,20 @@ class MCPProjectContextServer {
   
   constructor() {
     this.currentWorkingDirectory = this.determineWorkingDirectory();
-    console.error('MCP Server starting with working directory:', this.currentWorkingDirectory);
+    console.error('🚀 MCP Server starting with working directory:', this.currentWorkingDirectory);
     
     this.projectDiscovery = new ProjectDiscovery(this.currentWorkingDirectory);
-    this.memoryManager = new MemoryManager();
+    this.fileBasedMemoryManager = new FileBasedMemoryManager(this.currentWorkingDirectory);
     
     this.server = new Server(
-      { name: 'mcp-project-context', version: '1.0.0' },
+      { name: 'mcp-project-context', version: '2.0.0' },
       { capabilities: { tools: {}, resources: {}, prompts: {} } }
     );
     
     // Error handling for server
     this.setupErrorHandling();
+    
+    console.error('✨ File-based Memory System activated');
   }
   
   private determineWorkingDirectory(): string {
@@ -60,22 +62,22 @@ class MCPProjectContextServer {
   
   private setupErrorHandling() {
     process.on('uncaughtException', (error) => {
-      console.error('Uncaught Exception:', error);
+      console.error('💥 Uncaught Exception:', error);
       this.gracefulShutdown();
     });
     
     process.on('unhandledRejection', (reason, promise) => {
-      console.error('Unhandled Rejection at:', promise, 'reason:', reason);
+      console.error('💥 Unhandled Rejection at:', promise, 'reason:', reason);
       this.gracefulShutdown();
     });
     
     process.on('SIGINT', () => {
-      console.error('Received SIGINT, shutting down gracefully...');
+      console.error('🛑 Received SIGINT, shutting down gracefully...');
       this.gracefulShutdown();
     });
     
     process.on('SIGTERM', () => {
-      console.error('Received SIGTERM, shutting down gracefully...');
+      console.error('🛑 Received SIGTERM, shutting down gracefully...');
       this.gracefulShutdown();
     });
   }
@@ -86,9 +88,10 @@ class MCPProjectContextServer {
     }
     process.exit(0);
   }
+  
   async initialize() {
     try {
-      console.error('MCP Project Context Server initializing...');
+      console.error('🔧 MCP Project Context Server initializing...');
       
       // Discover project structure with timeout
       const discoveryPromise = this.projectDiscovery.discover();
@@ -99,11 +102,15 @@ class MCPProjectContextServer {
         )
       ]) as any;
       
-      // Load project memory
-      await this.memoryManager.initialize(this.projectDiscovery.getProjectId());
+      console.error(`✅ Project discovered: ${discovery.name} (${discovery.type})`);
       
-      // Initialize context manager and handlers
-      this.contextManager = new ContextManager(this.memoryManager, this.projectDiscovery);
+      // Initialize file-based memory system
+      console.error('🧠 Initializing File-Based Memory System...');
+      await this.fileBasedMemoryManager.initialize();
+      console.error('✅ File-based memory system ready');
+      
+      // Initialize context manager with file-based memory
+      this.contextManager = new ContextManager(this.fileBasedMemoryManager, this.projectDiscovery);
       this.fileHandler = new FileHandler(this.contextManager);
       this.gitHandler = new GitHandler(this.contextManager);
       
@@ -111,8 +118,7 @@ class MCPProjectContextServer {
         this.server,
         this.contextManager,
         this.fileHandler,
-        this.gitHandler,
-        this.memoryManager
+        this.gitHandler
       );
       
       this.resourceHandler = new ResourceHandler(
@@ -134,10 +140,12 @@ class MCPProjectContextServer {
       await this.resourceHandler.initialize();
       await this.promptHandler.initialize();
       
-      console.error('MCP Project Context Server initialized successfully');
+      console.error('✅ MCP Project Context Server initialized successfully');
+      console.error('🎯 Memory System: File-based (Claude Code-like)');
+      console.error('📁 Memory Files: CLAUDE.md hierarchy');
       
     } catch (error) {
-      console.error('Failed to initialize MCP server:', error);
+      console.error('❌ Failed to initialize MCP server:', error);
       throw error;
     }
   }
@@ -153,10 +161,12 @@ class MCPProjectContextServer {
       }
       
       await this.server.connect(transport);
-      console.error('MCP Project Context Server is running');
+      console.error('🚀 MCP Project Context Server is running');
+      console.error('💡 Using file-based memory system (CLAUDE.md files)');
+      console.error('✨ All memories are always available in context');
       
     } catch (error) {
-      console.error('Failed to start MCP server:', error);
+      console.error('❌ Failed to start MCP server:', error);
       process.exit(1);
     }
   }
@@ -165,6 +175,6 @@ class MCPProjectContextServer {
 // Main execution with proper error handling
 const server = new MCPProjectContextServer();
 server.run().catch((error) => {
-  console.error('Fatal error:', error);
+  console.error('💥 Fatal error:', error);
   process.exit(1);
 });

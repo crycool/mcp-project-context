@@ -8,35 +8,30 @@ import * as path from 'path';
 import { ContextManager } from '../context/contextManager.js';
 import { FileHandler } from './fileHandler.js';
 import { GitHandler } from './gitHandler.js';
-import { MemoryManager } from '../storage/memoryManager.js';
 
 export class ToolHandler {
   private server: Server;
   private contextManager: ContextManager;
   private fileHandler: FileHandler;
   private gitHandler: GitHandler;
-  private memoryManager: MemoryManager;
 
   constructor(
     server: Server,
     contextManager: ContextManager,
     fileHandler: FileHandler,
-    gitHandler: GitHandler,
-    memoryManager: MemoryManager
+    gitHandler: GitHandler
   ) {
     this.server = server;
     this.contextManager = contextManager;
     this.fileHandler = fileHandler;
     this.gitHandler = gitHandler;
-    this.memoryManager = memoryManager;
   }
+
   async initialize() {
-    // Register list tools handler
     this.server.setRequestHandler(ListToolsRequestSchema, async () => ({
       tools: this.getToolDefinitions()
     }));
 
-    // Register call tool handler
     this.server.setRequestHandler(CallToolRequestSchema, async (request) => {
       return await this.handleToolCall(request.params.name, request.params.arguments || {});
     });
@@ -44,6 +39,68 @@ export class ToolHandler {
 
   private getToolDefinitions(): Tool[] {
     return [
+      // =============== CORE CONTEXT AND MEMORY ===============
+      {
+        name: 'get_context',
+        description: 'Get current project context with file-based memory (always available, no search needed)',
+        inputSchema: {
+          type: 'object',
+          properties: {
+            tokenBudget: { 
+              type: 'number', 
+              description: 'Maximum tokens for context',
+              default: 25000
+            }
+          }
+        }
+      },
+      {
+        name: 'add_memory',
+        description: 'Add memory to project CLAUDE.md file (immediately available in context)',
+        inputSchema: {
+          type: 'object',
+          properties: {
+            content: { type: 'string', description: 'Memory content' },
+            tags: {
+              type: 'array',
+              items: { type: 'string' },
+              description: 'Optional tags for organization'
+            }
+          },
+          required: ['content']
+        }
+      },
+      {
+        name: 'add_quick_memory',
+        description: 'Add quick memory note (like Claude Code # syntax)',
+        inputSchema: {
+          type: 'object',
+          properties: {
+            content: { type: 'string', description: 'Quick memory content' }
+          },
+          required: ['content']
+        }
+      },
+      {
+        name: 'list_recent_memories',
+        description: 'List recent memory entries from CLAUDE.md files',
+        inputSchema: {
+          type: 'object',
+          properties: {
+            limit: { type: 'number', description: 'Number of recent entries', default: 10 }
+          }
+        }
+      },
+      {
+        name: 'get_memory_status',
+        description: 'Get status of memory files (CLAUDE.md hierarchy)',
+        inputSchema: {
+          type: 'object',
+          properties: {}
+        }
+      },
+
+      // =============== FILE OPERATIONS ===============
       {
         name: 'read_file',
         description: 'Read the contents of a file',
@@ -66,7 +123,8 @@ export class ToolHandler {
           },
           required: ['path', 'content']
         }
-      },      {
+      },
+      {
         name: 'list_directory',
         description: 'List contents of a directory',
         inputSchema: {
@@ -128,7 +186,7 @@ export class ToolHandler {
       },
       {
         name: 'edit_file',
-        description: 'Edit a file by replacing specific content with new content. Supports surgical text replacements.',
+        description: 'Edit a file by replacing specific content with new content',
         inputSchema: {
           type: 'object',
           properties: {
@@ -144,9 +202,11 @@ export class ToolHandler {
           required: ['path', 'old_content', 'new_content']
         }
       },
+
+      // =============== CODE SEARCH ===============
       {
         name: 'search_code',
-        description: 'Search for code patterns in project files with advanced filtering and context',
+        description: 'Search for code patterns in project files',
         inputSchema: {
           type: 'object',
           properties: {
@@ -161,9 +221,7 @@ export class ToolHandler {
             caseSensitive: { type: 'boolean', description: 'Case sensitive search', default: false },
             regex: { type: 'boolean', description: 'Treat pattern as regex', default: false },
             contextLines: { type: 'number', description: 'Number of context lines around matches', default: 2 },
-            maxResults: { type: 'number', description: 'Maximum results to return', default: 100 },
-            includeHidden: { type: 'boolean', description: 'Include hidden files', default: false },
-            followSymlinks: { type: 'boolean', description: 'Follow symbolic links', default: false }
+            maxResults: { type: 'number', description: 'Maximum results to return', default: 100 }
           },
           required: ['pattern']
         }
@@ -175,7 +233,7 @@ export class ToolHandler {
           type: 'object',
           properties: {
             symbolName: { type: 'string', description: 'Symbol name to search for' },
-            filePattern: { type: 'string', description: 'File pattern to search in (default: common code files)' }
+            filePattern: { type: 'string', description: 'File pattern to search in' }
           },
           required: ['symbolName']
         }
@@ -189,13 +247,13 @@ export class ToolHandler {
             includeNotes: { type: 'boolean', description: 'Include NOTE/INFO/WARNING comments', default: false }
           }
         }
-      },      {
+      },
+
+      // =============== GIT OPERATIONS ===============
+      {
         name: 'git_status',
         description: 'Get git repository status',
-        inputSchema: {
-          type: 'object',
-          properties: {}
-        }
+        inputSchema: { type: 'object', properties: {} }
       },
       {
         name: 'git_diff',
@@ -234,59 +292,71 @@ export class ToolHandler {
           },
           required: ['message']
         }
-      },      {
-        name: 'get_context',
-        description: 'Get current project context',
-        inputSchema: {
-          type: 'object',
-          properties: {
-            tokenBudget: { 
-              type: 'number', 
-              description: 'Maximum tokens for context',
-              default: 25000
-            }
-          }
-        }
-      },
-      {
-        name: 'search_memories',
-        description: 'Search project memories',
-        inputSchema: {
-          type: 'object',
-          properties: {
-            query: { type: 'string', description: 'Search query' },
-            limit: { type: 'number', description: 'Maximum results', default: 10 }
-          },
-          required: ['query']
-        }
-      },
-      {
-        name: 'add_memory',
-        description: 'Add a memory to the project',
-        inputSchema: {
-          type: 'object',
-          properties: {
-            type: { 
-              type: 'string', 
-              enum: ['observation', 'entity', 'relation', 'preference'],
-              description: 'Type of memory'
-            },
-            content: { type: 'object', description: 'Memory content' },
-            tags: {
-              type: 'array',
-              items: { type: 'string' },
-              description: 'Tags for the memory'
-            }
-          },
-          required: ['type', 'content']
-        }
       }
     ];
   }
+
   private async handleToolCall(name: string, args: any): Promise<any> {
     try {
+      console.error(`🔧 Tool call: ${name}`);
+      
       switch (name) {
-        // File operations
+        // =============== CORE CONTEXT AND MEMORY ===============
+        case 'get_context':
+          return {
+            content: [
+              {
+                type: 'text',
+                text: this.contextManager.generateContext(args.tokenBudget || 25000)
+              }
+            ]
+          };
+        
+        case 'add_memory':
+          const result = await this.contextManager.addMemory(args.content, args.tags || []);
+          return {
+            content: [
+              {
+                type: 'text',
+                text: `✅ ${result}\n\n💡 Memory is immediately available in context. Use get_context to see it.`
+              }
+            ]
+          };
+        
+        case 'add_quick_memory':
+          const quickResult = await this.contextManager.addQuickMemory(args.content);
+          return {
+            content: [
+              {
+                type: 'text',
+                text: `✅ ${quickResult}\n\n💡 Quick memory added and immediately available in context.`
+              }
+            ]
+          };
+        
+        case 'list_recent_memories':
+          const recentMemories = this.contextManager.getRecentMemories(args.limit || 10);
+          return {
+            content: [
+              {
+                type: 'text',
+                text: `📋 **Recent Memory Entries:**\n\n${recentMemories}`
+              }
+            ]
+          };
+        
+        case 'get_memory_status':
+          const memoryStatus = this.contextManager.getMemoryStatus();
+          return {
+            content: [
+              {
+                type: 'text',
+                text: memoryStatus
+              }
+            ]
+          };
+
+        // =============== FILE OPERATIONS ===============
         case 'read_file':
           return {
             content: [
@@ -303,7 +373,7 @@ export class ToolHandler {
             content: [
               {
                 type: 'text',
-                text: `File written successfully: ${args.path}`
+                text: `✅ File written successfully: ${args.path}`
               }
             ]
           };
@@ -325,7 +395,7 @@ export class ToolHandler {
             content: [
               {
                 type: 'text',
-                text: `Directory created: ${args.path}`
+                text: `✅ Directory created: ${args.path}`
               }
             ]
           };
@@ -336,7 +406,7 @@ export class ToolHandler {
             content: [
               {
                 type: 'text',
-                text: `File deleted: ${args.path}`
+                text: `✅ File deleted: ${args.path}`
               }
             ]
           };
@@ -347,7 +417,7 @@ export class ToolHandler {
             content: [
               {
                 type: 'text',
-                text: `File moved from ${args.source} to ${args.destination}`
+                text: `✅ File moved from ${args.source} to ${args.destination}`
               }
             ]
           };
@@ -359,23 +429,17 @@ export class ToolHandler {
           
           let readResultText = '';
           
-          // Add successful reads
           if (successfulReads.length > 0) {
             readResultText += '=== Successfully read files ===\n\n';
             for (const file of successfulReads) {
-              readResultText += `File: ${file.path}\n`;
-              readResultText += '---\n';
-              readResultText += file.content;
-              readResultText += '\n\n';
+              readResultText += `File: ${file.path}\n---\n${file.content}\n\n`;
             }
           }
           
-          // Add failed reads
           if (failedReads.length > 0) {
             readResultText += '=== Failed to read files ===\n\n';
             for (const file of failedReads) {
-              readResultText += `File: ${file.path}\n`;
-              readResultText += `Error: ${file.error}\n\n`;
+              readResultText += `File: ${file.path}\nError: ${file.error}\n\n`;
             }
           }
           
@@ -401,13 +465,14 @@ export class ToolHandler {
               {
                 type: 'text',
                 text: editResult.success 
-                  ? `✓ ${editResult.message}` 
-                  : `✗ ${editResult.message}`
+                  ? `✅ ${editResult.message}` 
+                  : `❌ ${editResult.message}`
               }
             ],
             isError: !editResult.success
           };
-        
+
+        // =============== CODE SEARCH ===============
         case 'search_code':
           const projectInfo = this.contextManager.getProjectInfo();
           const searchOptions = {
@@ -425,7 +490,6 @@ export class ToolHandler {
           
           const searchResults = await this.fileHandler.searchCode(searchOptions);
           
-          // Format results for display
           let searchResultText = `🔍 Search Results\n`;
           searchResultText += `━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n`;
           searchResultText += `Pattern: "${args.pattern}"${args.regex ? ' (regex)' : ''}\n`;
@@ -481,8 +545,7 @@ export class ToolHandler {
           
           for (const result of symbolResults) {
             const relativePath = path.relative(process.cwd(), result.file);
-            symbolText += `📍 ${relativePath}:${result.line}\n`;
-            symbolText += `   ${result.match}\n\n`;
+            symbolText += `📍 ${relativePath}:${result.line}\n   ${result.match}\n\n`;
           }
           
           return {
@@ -516,23 +579,15 @@ export class ToolHandler {
           
           for (const [type, items] of Object.entries(todosByType)) {
             const emoji = {
-              TODO: '📌',
-              FIXME: '🔧',
-              BUG: '🐛',
-              HACK: '⚡',
-              XXX: '⚠️',
-              NOTE: '📝',
-              INFO: 'ℹ️',
-              WARNING: '⚠️'
+              TODO: '📌', FIXME: '🔧', BUG: '🐛', HACK: '⚡',
+              XXX: '⚠️', NOTE: '📝', INFO: 'ℹ️', WARNING: '⚠️'
             }[type] || '•';
             
-            todoText += `\n${emoji} ${type} (${items.length})\n`;
-            todoText += `${'─'.repeat(30)}\n`;
+            todoText += `\n${emoji} ${type} (${items.length})\n${'─'.repeat(30)}\n`;
             
             for (const item of items) {
               const relativePath = path.relative(process.cwd(), item.file);
-              todoText += `  ${relativePath}:${item.line}\n`;
-              todoText += `    ${item.match}\n`;
+              todoText += `  ${relativePath}:${item.line}\n    ${item.match}\n`;
             }
           }
           
@@ -544,7 +599,8 @@ export class ToolHandler {
               }
             ]
           };
-        // Git operations
+
+        // =============== GIT OPERATIONS ===============
         case 'git_status':
           const status = await this.gitHandler.getStatus();
           return {
@@ -573,7 +629,7 @@ export class ToolHandler {
             content: [
               {
                 type: 'text',
-                text: `Files staged: ${Array.isArray(args.files) ? args.files.join(', ') : args.files}`
+                text: `✅ Files staged: ${Array.isArray(args.files) ? args.files.join(', ') : args.files}`
               }
             ]
           };
@@ -584,44 +640,7 @@ export class ToolHandler {
             content: [
               {
                 type: 'text',
-                text: `Commit created: ${commitResult.commit}`
-              }
-            ]
-          };
-        // Context and memory operations
-        case 'get_context':
-          const context = this.contextManager.generateContext(args.tokenBudget);
-          return {
-            content: [
-              {
-                type: 'text',
-                text: context
-              }
-            ]
-          };
-        
-        case 'search_memories':
-          const memories = this.memoryManager.searchMemories(args.query, args.limit);
-          return {
-            content: [
-              {
-                type: 'text',
-                text: JSON.stringify(memories, null, 2)
-              }
-            ]
-          };
-        
-        case 'add_memory':
-          const memoryId = this.memoryManager.addMemory(
-            args.type,
-            args.content,
-            args.tags
-          );
-          return {
-            content: [
-              {
-                type: 'text',
-                text: `Memory added with ID: ${memoryId}`
+                text: `✅ Commit created: ${commitResult.commit}`
               }
             ]
           };
@@ -630,12 +649,12 @@ export class ToolHandler {
           throw new Error(`Unknown tool: ${name}`);
       }
     } catch (error) {
-      console.error(`Error in tool ${name}:`, error);
+      console.error(`❌ Tool ${name} failed:`, error);
       return {
         content: [
           {
             type: 'text',
-            text: `Error: ${error instanceof Error ? error.message : String(error)}`
+            text: `❌ Error: ${error instanceof Error ? error.message : String(error)}`
           }
         ],
         isError: true
