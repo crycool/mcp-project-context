@@ -116,7 +116,13 @@ Create `CLAUDE.md` files in your project for persistent memory:
 - `read_file` - Read single file
 - `read_multiple_files` - Read multiple files at once
 - `write_file` - Write content to file
-- `edit_file` - Surgical text replacement
+- `edit_file` - **ENHANCED** Smart text replacement with 5 strategies
+  - **EXACT**: Traditional exact match (default)
+  - **FUZZY**: Handles whitespace/formatting differences
+  - **SECTION**: Edit between headers (perfect for markdown/docs)
+  - **LINES**: Edit specific line ranges
+  - **PATTERN**: Regex-based replacements
+  - **BETWEEN**: Edit content between markers
 - `delete_file` - Delete files
 - `move_file` - Move or rename files
 - `create_directory` - Create new directories
@@ -161,6 +167,45 @@ search_code({
   contextLines: 2
 })
 // Now finds matches in .env, .json, .yaml, etc.!
+```
+
+### Smart Edit Examples
+```javascript
+// 1. FUZZY - Handles whitespace differences
+edit_file("README.md", "## Configuration", "## Setup", { 
+  strategy: "fuzzy" 
+})
+
+// 2. SECTION - Edit markdown sections
+edit_file("README.md", 
+  { sectionStart: "## Configuration", sectionEnd: "## Usage" }, 
+  "New configuration content...", 
+  { strategy: "section" }
+)
+
+// 3. LINES - Edit specific lines
+edit_file("app.js", 
+  { startLine: 10, endLine: 15 }, 
+  "// New code here", 
+  { strategy: "lines" }
+)
+
+// 4. PATTERN - Regex replacements
+edit_file("*.js", 
+  { pattern: /console\.log\(/g }, 
+  "logger.debug(", 
+  { strategy: "pattern" }
+)
+
+// 5. BETWEEN - Edit between markers
+edit_file("template.html", 
+  { 
+    startMarker: "<!-- BEGIN CONTENT -->", 
+    endMarker: "<!-- END CONTENT -->" 
+  }, 
+  "<div>New content</div>", 
+  { strategy: "between" }
+)
 ```
 
 ### Reading Multiple Files
@@ -226,6 +271,17 @@ If the tool starts in wrong directory:
 3. Use specific file patterns
 
 ## 📈 Recent Improvements
+
+### Version 2.1.0 (January 2025)
+- ✅ **Smart Edit System**: 5 powerful editing strategies
+  - Fuzzy matching for whitespace tolerance
+  - Section-based editing for documentation
+  - Line range editing for precise changes
+  - Pattern/regex support for bulk replacements
+  - Between markers for template editing
+- ✅ Enhanced error messages with similarity detection
+- ✅ Backup support for safe editing
+- ✅ Diff statistics for change tracking
 
 ### Version 2.0.0 (January 2025)
 - ✅ File-based memory system (replaced database)

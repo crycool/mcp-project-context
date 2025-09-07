@@ -4,17 +4,29 @@ import * as path from 'path';
 import chokidar, { FSWatcher } from 'chokidar';
 import { ContextManager } from '../context/contextManager.js';
 import { CodeSearcher, SearchOptions, SearchSummary } from '../search/codeSearcher.js';
+import { 
+  SmartEditor, 
+  EditStrategy, 
+  SmartEditOptions, 
+  EditResult,
+  SectionEditParams,
+  LineEditParams,
+  PatternEditParams,
+  BetweenEditParams 
+} from '../utils/smartEditor.js';
 
 export class FileHandler {
   private contextManager: ContextManager;
   private watcher: FSWatcher | null = null;
   private watchedPaths: Set<string> = new Set();
   private codeSearcher: CodeSearcher;
+  private smartEditor: SmartEditor;
 
   constructor(contextManager: ContextManager) {
     this.contextManager = contextManager;
     const projectInfo = contextManager.getProjectInfo();
     this.codeSearcher = new CodeSearcher(projectInfo?.root || process.cwd());
+    this.smartEditor = new SmartEditor();
   }
 
   startWatching() {
@@ -91,6 +103,7 @@ export class FileHandler {
       // Don't crash the server if file watching fails
     }
   }
+  
   stopWatching() {
     if (this.watcher) {
       try {
@@ -137,6 +150,7 @@ export class FileHandler {
       timestamp: new Date()
     });
   }
+  
   async readFile(filePath: string): Promise<string> {
     const content = await fs.readFile(filePath, 'utf-8');
     
@@ -186,6 +200,7 @@ export class FileHandler {
     
     return result;
   }
+  
   async createDirectory(dirPath: string) {
     await fs.mkdir(dirPath, { recursive: true });
     
@@ -294,155 +309,193 @@ export class FileHandler {
   }
 
   /**
-   * Edit a file by replacing old content with new content
-   * Supports surgical text replacements with validation
+   * ENHANCED: Smart edit file with multiple strategies
    * @param filePath Path to the file to edit
-   * @param oldContent Text to replace
+   * @param oldContent Text to replace (or parameters object for advanced strategies)
    * @param newContent Replacement text
-   * @param expectedReplacements Number of expected replacements (default: 1)
+   * @param options Edit options including strategy selection
    * @returns Result of the edit operation
    */
   async editFile(
     filePath: string,
-    oldContent: string,
-    newContent: string,
-    expectedReplacements: number = 1
-  ): Promise<{
-    success: boolean;
-    message: string;
-    replacements?: number;
-  }> {
+    oldContent: string | any,
+    newContent?: string,
+    options?: SmartEditOptions | number
+  ): Promise<EditResult> {
     try {
-      // Read the current file content
-      const currentContent = await fs.readFile(filePath, 'utf-8');
-      
-      // Count occurrences
-      const occurrences = (currentContent.match(new RegExp(
-        oldContent.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 
-        'g'
-      )) || []).length;
-      
-      // Validate expected replacements
-      if (occurrences === 0) {
-        // Try to find similar content for helpful error message
-        const lines = currentContent.split('\n');
-        const oldLines = oldContent.split('\n');
-        const firstOldLine = oldLines[0];
+      // Handle backward compatibility with old signature
+      if (typeof options === 'number') {
+        // Legacy mode: expectedReplacements as number
+        const expectedReplacements = options;
+        const result = await this.smartEditor.smartEdit(
+          filePath,
+          oldContent as string,
+          newContent || '',
+          { strategy: EditStrategy.EXACT }
+        );
         
-        let similarLine = '';
-        for (const line of lines) {
-          if (line.includes(firstOldLine.trim()) || 
-              this.calculateSimilarity(line, firstOldLine) > 0.7) {
-            similarLine = line;
-            break;
-          }
+        // Convert to legacy format if needed
+        if (expectedReplacements !== -1 && result.replacements !== expectedReplacements) {
+          return {
+            success: false,
+            message: `Expected ${expectedReplacements} replacement(s) but found ${result.replacements} occurrence(s)`,
+            replacements: result.replacements
+          };
         }
         
-        return {
-          success: false,
-          message: `Content not found. ${similarLine ? 
-            `Did you mean: "${similarLine.substring(0, 50)}..."?` : 
-            'Please check the exact text to replace.'}`
-        };
+        return result;
       }
       
-      if (expectedReplacements !== -1 && occurrences !== expectedReplacements) {
-        return {
-          success: false,
-          message: `Expected ${expectedReplacements} replacement(s) but found ${occurrences} occurrence(s)`,
-          replacements: occurrences
-        };
+      // New smart edit mode with options
+      const editOptions = options || {};
+      
+      // Determine strategy from options or use default
+      const strategy = editOptions.strategy || EditStrategy.EXACT;
+      
+      switch (strategy) {
+        case EditStrategy.FUZZY:
+          return await this.smartEditor.smartEdit(
+            filePath,
+            oldContent as string,
+            newContent || '',
+            { ...editOptions, fuzzy: true }
+          );
+          
+        case EditStrategy.SECTION:
+          const sectionParams = oldContent as SectionEditParams;
+          return await this.smartEditor.editSection({
+            path: filePath,
+            sectionStart: sectionParams.sectionStart,
+            sectionEnd: sectionParams.sectionEnd,
+            newContent: newContent || sectionParams.newContent,
+            options: editOptions
+          });
+          
+        case EditStrategy.LINES:
+          const lineParams = oldContent as LineEditParams;
+          return await this.smartEditor.editLines({
+            path: filePath,
+            startLine: lineParams.startLine,
+            endLine: lineParams.endLine,
+            newContent: newContent || lineParams.newContent,
+            options: editOptions
+          });
+          
+        case EditStrategy.PATTERN:
+          const patternParams = oldContent as PatternEditParams;
+          return await this.smartEditor.editPattern({
+            path: filePath,
+            pattern: patternParams.pattern,
+            newContent: newContent || patternParams.newContent,
+            options: editOptions
+          });
+          
+        case EditStrategy.BETWEEN:
+          const betweenParams = oldContent as BetweenEditParams;
+          return await this.smartEditor.editBetween({
+            path: filePath,
+            startMarker: betweenParams.startMarker,
+            endMarker: betweenParams.endMarker,
+            newContent: newContent || betweenParams.newContent,
+            includeMarkers: betweenParams.includeMarkers,
+            options: editOptions
+          });
+          
+        default:
+          // Default to exact matching
+          return await this.smartEditor.smartEdit(
+            filePath,
+            oldContent as string,
+            newContent || '',
+            editOptions
+          );
       }
-      
-      // Perform the replacement
-      let updatedContent = currentContent;
-      if (expectedReplacements === -1) {
-        // Replace all occurrences
-        updatedContent = currentContent.split(oldContent).join(newContent);
-      } else {
-        // Replace specific number of occurrences
-        let count = 0;
-        updatedContent = currentContent.replace(
-          new RegExp(oldContent.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'g'),
-          (match) => {
-            count++;
-            return count <= expectedReplacements ? newContent : match;
-          }
-        );
-      }
-      
-      // Write the updated content
-      await fs.writeFile(filePath, updatedContent, 'utf-8');
-      
-      // Update context
-      this.contextManager.updateContext('file_edited', {
-        path: filePath,
-        size: updatedContent.length,
-        timestamp: new Date(),
-        replacements: occurrences
-      });
-      
-      // Reload the file in context
-      await this.contextManager.loadFileContext(filePath);
-      
-      return {
-        success: true,
-        message: `Successfully replaced ${occurrences} occurrence(s)`,
-        replacements: occurrences
-      };
       
     } catch (error) {
       return {
         success: false,
         message: `Error editing file: ${error instanceof Error ? error.message : String(error)}`
       };
+    } finally {
+      // Always reload the file in context after edit attempt
+      await this.contextManager.loadFileContext(filePath);
     }
   }
 
   /**
-   * Calculate string similarity using Levenshtein distance
+   * Edit a section in a file (e.g., between markdown headers)
    */
-  private calculateSimilarity(str1: string, str2: string): number {
-    const longer = str1.length > str2.length ? str1 : str2;
-    const shorter = str1.length > str2.length ? str2 : str1;
-    
-    if (longer.length === 0) {
-      return 1.0;
-    }
-    
-    const distance = this.levenshteinDistance(longer, shorter);
-    return (longer.length - distance) / longer.length;
+  async editSection(
+    filePath: string,
+    sectionStart: string,
+    newContent: string,
+    sectionEnd?: string,
+    options?: SmartEditOptions
+  ): Promise<EditResult> {
+    return await this.smartEditor.editSection({
+      path: filePath,
+      sectionStart,
+      sectionEnd,
+      newContent,
+      options
+    });
   }
 
   /**
-   * Calculate Levenshtein distance between two strings
+   * Edit specific lines in a file
    */
-  private levenshteinDistance(str1: string, str2: string): number {
-    const matrix: number[][] = [];
-    
-    for (let i = 0; i <= str2.length; i++) {
-      matrix[i] = [i];
-    }
-    
-    for (let j = 0; j <= str1.length; j++) {
-      matrix[0][j] = j;
-    }
-    
-    for (let i = 1; i <= str2.length; i++) {
-      for (let j = 1; j <= str1.length; j++) {
-        if (str2.charAt(i - 1) === str1.charAt(j - 1)) {
-          matrix[i][j] = matrix[i - 1][j - 1];
-        } else {
-          matrix[i][j] = Math.min(
-            matrix[i - 1][j - 1] + 1,  // substitution
-            matrix[i][j - 1] + 1,       // insertion
-            matrix[i - 1][j] + 1        // deletion
-          );
-        }
-      }
-    }
-    
-    return matrix[str2.length][str1.length];
+  async editLines(
+    filePath: string,
+    startLine: number,
+    endLine: number,
+    newContent: string,
+    options?: SmartEditOptions
+  ): Promise<EditResult> {
+    return await this.smartEditor.editLines({
+      path: filePath,
+      startLine,
+      endLine,
+      newContent,
+      options
+    });
+  }
+
+  /**
+   * Edit using a pattern (regex or string)
+   */
+  async editPattern(
+    filePath: string,
+    pattern: string | RegExp,
+    newContent: string,
+    options?: SmartEditOptions
+  ): Promise<EditResult> {
+    return await this.smartEditor.editPattern({
+      path: filePath,
+      pattern,
+      newContent,
+      options
+    });
+  }
+
+  /**
+   * Edit content between two markers
+   */
+  async editBetween(
+    filePath: string,
+    startMarker: string,
+    endMarker: string,
+    newContent: string,
+    includeMarkers: boolean = false,
+    options?: SmartEditOptions
+  ): Promise<EditResult> {
+    return await this.smartEditor.editBetween({
+      path: filePath,
+      startMarker,
+      endMarker,
+      newContent,
+      includeMarkers,
+      options
+    });
   }
 
   /**
