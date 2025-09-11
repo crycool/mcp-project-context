@@ -1,16 +1,23 @@
-# MCP Project Context Manager
+# MCP Project Context Manager v3.0
 
-A powerful Model Context Protocol (MCP) server that provides Claude Desktop with Claude Code-like project context management, file-based persistent memory, and comprehensive search capabilities.
+A powerful Model Context Protocol (MCP) server that provides Claude Desktop with advanced path management, configuration system, file-based persistent memory, and comprehensive project context capabilities.
 
-## 🚀 Key Features
+## 🚀 Key Features v3.0
 
-### 🧠 File-Based Memory System (Claude Code-like)
+### 🔧 **Advanced Path Management System**
+- **Desktop Commander-like Configuration**: Runtime config changes, persistent settings
+- **Centralized Path Manager**: All path operations with auto-correction and validation
+- **Path Recovery System**: Automatic recovery from path-related failures
+- **Emergency Reset**: Complete system restore to safe, working state
+- **Working Directory Auto-Detection**: Smart project root detection
+
+### 🧠 **File-Based Memory System (Claude Code-like)**
 - **Hierarchical CLAUDE.md files** for persistent memory storage
 - **Always in context** - no search required, memories are immediately available
 - **@import system** for including external files
 - **Memory hierarchy**: Enterprise > Project > User > Local
 
-### 🔍 Enhanced Search Capabilities
+### 🔍 **Enhanced Search Capabilities**
 - **Search ALL text files** - not just code files
 - Includes: `.md`, `.json`, `.yaml`, `.xml`, `.env`, `.txt`, `.log`, `.csv`, `.html`, `.css`, `.svg`
 - Advanced pattern matching with regex support
@@ -18,11 +25,12 @@ A powerful Model Context Protocol (MCP) server that provides Claude Desktop with
 - Symbol search across multiple languages
 - TODO/FIXME comment tracking
 
-### 📁 Smart Working Directory Detection
+### 📁 **Smart Working Directory Management**
 - **Automatic project root detection** - handles Claude Desktop's exe folder issue
-- Environment variable support (`PROJECT_ROOT`)
-- Git repository detection
+- Environment variable support (`PROJECT_ROOT`, `MCP_PROJECT_ROOT`)
+- Git repository detection with auto-navigation
 - Automatic `process.chdir()` to correct directory
+- Safety checks prevent dangerous directory operations
 
 ### 🛠 Comprehensive Tool Set
 - **File Operations**: read, write, edit, delete, move, create directories
@@ -30,6 +38,9 @@ A powerful Model Context Protocol (MCP) server that provides Claude Desktop with
 - **Git Integration**: status, diff, add, commit
 - **Search Tools**: code search, symbol search, TODO search
 - **Memory Management**: add memories, list recent memories, reload memories
+- **🆕 Configuration Tools**: get/set config, validate paths, debug path resolution
+- **🆕 Path Management Tools**: working directory management, path validation, auto-fix
+- **🆕 Debug Tools**: trace working directory, get path stats, emergency reset
 
 ## 📦 Installation
 

@@ -1,6 +1,6 @@
 {
   "name": "mcp-project-context",
-  "version": "1.1.0-enhanced",
+  "version": "3.0.1-path-management",
   "description": "Enhanced MCP Server for Claude Desktop with automatic documentation loading and advanced memory search",
   "main": "dist/index.js",
   "type": "module",

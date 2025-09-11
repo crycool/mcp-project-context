@@ -8,6 +8,7 @@ import { EnhancedContextManager } from '../context/enhancedContextManager.js';
 import { FileHandler } from './fileHandler.js';
 import { GitHandler } from './gitHandler.js';
 import { FileBasedMemoryManager } from '../storage/fileBasedMemoryManager.js';
+import { ConfigToolHandler } from './config/configToolHandler.js';
 
 /**
  * Enhanced Tool Handler with File-Based Memory System
@@ -25,6 +26,7 @@ export class EnhancedToolHandler {
   private fileHandler: FileHandler;
   private gitHandler: GitHandler;
   private fileBasedMemoryManager: FileBasedMemoryManager;
+  private configToolHandler: ConfigToolHandler;
 
   constructor(
     server: Server,
@@ -38,6 +40,7 @@ export class EnhancedToolHandler {
     this.fileHandler = fileHandler;
     this.gitHandler = gitHandler;
     this.fileBasedMemoryManager = fileBasedMemoryManager;
+    this.configToolHandler = new ConfigToolHandler(server);
   }
 
   async initialize() {
@@ -57,10 +60,14 @@ export class EnhancedToolHandler {
   }
 
   /**
-   * Get enhanced tool definitions with file-based memory features
+   * Get enhanced tool definitions with file-based memory features and path management
    */
   private getEnhancedToolDefinitions(): Tool[] {
-    return [
+    // Get config tools from config handler
+    const configTools = this.configToolHandler.getConfigToolDefinitions();
+    
+    // Combine with existing tools
+    const coreTools: Tool[] = [
       // ================== FILE-BASED MEMORY TOOLS ==================
       {
         name: 'get_context',
@@ -360,6 +367,9 @@ export class EnhancedToolHandler {
         }
       }
     ];
+    
+    // Combine config tools with core tools
+    return [...configTools, ...coreTools];
   }
 
   /**
@@ -370,6 +380,18 @@ export class EnhancedToolHandler {
     
     try {
       console.error(`🔧 Tool call: ${name}`);
+      
+      // Check if it's a config tool first
+      const configToolNames = [
+        'get_mcp_config', 'set_mcp_config', 'reset_mcp_config',
+        'get_working_directory', 'set_working_directory', 'validate_paths',
+        'fix_path_issues', 'debug_path_resolution', 'trace_working_directory',
+        'get_path_stats', 'emergency_reset'
+      ];
+      
+      if (configToolNames.includes(name)) {
+        return await this.configToolHandler.handleConfigToolCall(name, args);
+      }
       
       switch (name) {
         // ================== FILE-BASED MEMORY TOOLS ==================

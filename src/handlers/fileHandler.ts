@@ -14,6 +14,8 @@ import {
   PatternEditParams,
   BetweenEditParams 
 } from '../utils/smartEditor.js';
+import { pathManager } from '../utils/paths/pathManager.js';
+import { pathRecovery } from '../utils/paths/pathRecoveryManager.js';
 
 export class FileHandler {
   private contextManager: ContextManager;
@@ -152,33 +154,93 @@ export class FileHandler {
   }
   
   async readFile(filePath: string): Promise<string> {
-    const content = await fs.readFile(filePath, 'utf-8');
-    
-    // Update context
-    this.contextManager.updateContext('file_read', {
-      path: filePath,
-      size: content.length,
-      timestamp: new Date()
-    });
-    
-    // Cache the file
-    await this.contextManager.loadFileContext(filePath);
-    
-    return content;
+    try {
+      // Use path manager to resolve and validate path
+      const resolvedPath = pathManager.getValidPath(filePath);
+      const content = await fs.readFile(resolvedPath, 'utf-8');
+      
+      // Update context
+      this.contextManager.updateContext('file_read', {
+        path: resolvedPath,
+        originalPath: filePath,
+        size: content.length,
+        timestamp: new Date()
+      });
+      
+      // Cache the file
+      await this.contextManager.loadFileContext(resolvedPath);
+      
+      return content;
+    } catch (error) {
+      // Try path recovery
+      const recovery = await pathRecovery.recoverFromPathError(
+        error instanceof Error ? error : new Error(String(error)),
+        filePath
+      );
+      
+      if (recovery.success) {
+        // Retry with recovered path
+        const resolvedPath = pathManager.getValidPath(filePath);
+        const content = await fs.readFile(resolvedPath, 'utf-8');
+        
+        this.contextManager.updateContext('file_read', {
+          path: resolvedPath,
+          originalPath: filePath,
+          size: content.length,
+          timestamp: new Date(),
+          recoveryApplied: true
+        });
+        
+        await this.contextManager.loadFileContext(resolvedPath);
+        return content;
+      }
+      
+      throw new Error(`Failed to read file ${filePath}: ${error instanceof Error ? error.message : String(error)}`);
+    }
   }
 
   async writeFile(filePath: string, content: string) {
-    await fs.writeFile(filePath, content, 'utf-8');
-    
-    // Update context
-    this.contextManager.updateContext('file_written', {
-      path: filePath,
-      size: content.length,
-      timestamp: new Date()
-    });
-    
-    // Reload the file in context
-    await this.contextManager.loadFileContext(filePath);
+    try {
+      // Use path manager to resolve and validate path
+      const resolvedPath = pathManager.getValidPath(filePath);
+      await fs.writeFile(resolvedPath, content, 'utf-8');
+      
+      // Update context
+      this.contextManager.updateContext('file_written', {
+        path: resolvedPath,
+        originalPath: filePath,
+        size: content.length,
+        timestamp: new Date()
+      });
+      
+      // Reload the file in context
+      await this.contextManager.loadFileContext(resolvedPath);
+    } catch (error) {
+      // Try path recovery
+      const recovery = await pathRecovery.recoverFromPathError(
+        error instanceof Error ? error : new Error(String(error)),
+        filePath
+      );
+      
+      if (recovery.success) {
+        // Retry with recovered path
+        const resolvedPath = pathManager.getValidPath(filePath);
+        await fs.writeFile(resolvedPath, content, 'utf-8');
+        
+        this.contextManager.updateContext('file_written', {
+          path: resolvedPath,
+          originalPath: filePath,
+          size: content.length,
+          timestamp: new Date(),
+          recoveryApplied: true
+        });
+        
+        await this.contextManager.loadFileContext(resolvedPath);
+        return;
+      }
+      
+      throw new Error(`Failed to write file ${filePath}: ${error instanceof Error ? error.message : String(error)}`);
+    }
   }
 
   async listDirectory(dirPath: string): Promise<string[]> {

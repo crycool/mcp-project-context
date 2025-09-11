@@ -3,6 +3,7 @@ import * as path from 'path';
 import { FileBasedMemoryManager } from '../storage/fileBasedMemoryManager.js';
 import { ProjectDiscovery, ProjectInfo } from '../discovery/projectDiscovery.js';
 import { DocumentationLoader, DocumentationLoadResult } from './enhanced/documentationLoader.js';
+import { ContextManager } from './contextManager.js';
 
 export interface EnhancedProjectContext {
   project: ProjectInfo;

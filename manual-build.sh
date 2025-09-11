@@ -1,5 +1,5 @@
 #!/bin/bash
-cd "/Users/yusufkamil/Desktop/mcp-project-context"
+cd "/Users/yusufkamil/Desktop/SurpriseBox"
 echo "Building MCP Project Context..."
 npm run build
 echo "Build completed!"
