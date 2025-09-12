@@ -4,6 +4,7 @@ import * as path from 'path';
 import chokidar, { FSWatcher } from 'chokidar';
 import { ContextManager } from '../context/contextManager.js';
 import { CodeSearcher, SearchOptions, SearchSummary } from '../search/codeSearcher.js';
+import { DebugCodeSearcher } from '../search/debugCodeSearcher.js';
 import { 
   SmartEditor, 
   EditStrategy, 
@@ -22,12 +23,14 @@ export class FileHandler {
   private watcher: FSWatcher | null = null;
   private watchedPaths: Set<string> = new Set();
   private codeSearcher: CodeSearcher;
+  private debugCodeSearcher: DebugCodeSearcher; // 🐛 DEBUG VERSION
   private smartEditor: SmartEditor;
 
   constructor(contextManager: ContextManager) {
     this.contextManager = contextManager;
     const projectInfo = contextManager.getProjectInfo();
     this.codeSearcher = new CodeSearcher(projectInfo?.root || process.cwd());
+    this.debugCodeSearcher = new DebugCodeSearcher(projectInfo?.root || process.cwd()); // 🐛 DEBUG
     this.smartEditor = new SmartEditor();
   }
 
@@ -574,8 +577,9 @@ export class FileHandler {
         timestamp: new Date()
       });
 
-      // Perform search
-      const results = await this.codeSearcher.searchCode(options);
+      // 🐛 USE DEBUG VERSION TO IDENTIFY SEARCH ISSUES
+      console.error(`🔍 [FileHandler] Using DEBUG code searcher for bug hunting`);
+      const results = await this.debugCodeSearcher.searchCode(options);
 
       // Log search metrics
       console.error(`Code search completed: ${results.totalMatches} matches in ${results.matchedFiles} files (${results.searchTime}ms)`);

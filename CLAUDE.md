@@ -441,3 +441,54 @@ Ready for immediate commit and deployment. Path management system now bulletproo
 🚀 Enhanced server started with advanced path management system
 **Tags:** server, startup, path-management, v3.0.0
 
+
+
+## 2025-09-12T06:08:00.000Z
+🐛 **CRITICAL BUG FIX IN PROGRESS: search_code Tool Debug Version Deployed**
+
+**Problem:** search_code tool tamamen çalışmıyor - Her query'de "Files searched: 0" dönüyor
+
+**Root Cause Investigation:** 
+- ✅ SurpriseBox Unity project verified - Assets/Scripts/*.cs files exist
+- ✅ Target files confirmed: GiftCreationUI.cs with SaveGift method found
+- ✅ Pattern "SaveGift", "using", "class" keywords exist in files
+- ❌ BUT search returns 0 files, indicating issue in file discovery phase
+
+**Debug Actions Taken:**
+1. **Created DebugCodeSearcher** with extensive logging
+2. **Enhanced getFilesToSearch()** with step-by-step debug output
+3. **Modified FileHandler** to use debug version temporarily
+4. **Build successful** - ready for testing
+
+**Debug Points Added:**
+- Directory resolution validation
+- Glob pattern execution monitoring  
+- File filtering pipeline analysis
+- Binary exclusion rule verification
+- Gitignore filter impact assessment
+- Search pattern compilation tracking
+
+**Expected Debug Output:**
+- Detailed file discovery process
+- Exact file counts at each filtering stage
+- Directory accessibility verification
+- Pattern matching diagnostics
+
+**Next Steps:**
+1. Test debug version with simple patterns
+2. Identify exact failure point in pipeline
+3. Fix root cause and restore normal functionality
+4. Document fix in memory for future reference
+
+**Critical for:** Unity C# development workflow, codebase analysis, bug resolution efficiency
+**Tags:** bug-fix, search-tool, debug-version, unity-csharp, file-discovery, critical
+
+## 2025-09-12T06:08:30.000Z  
+🚀 **DEBUG VERSION DEPLOYED: search_code Debug Analysis Ready**
+
+**Status:** ✅ Built and ready for testing
+**Components:** DebugCodeSearcher, Enhanced FileHandler with debug logging
+**Purpose:** Identify why search_code finds 0 files in SurpriseBox Unity project
+
+**Ready to test patterns:** "SaveGift", "using", "class", directory: "/Users/yusufkamil/Desktop/SurpriseBox"
+**Tags:** deployment-ready, debug-testing, search-fix

@@ -206,13 +206,19 @@ export class ToolHandler {
       // =============== CODE SEARCH ===============
       {
         name: 'search_code',
-        description: 'Search for code patterns in project files',
+        description: '🔍 Search for code patterns in project files (FIXED: Now handles relative paths and nested directories properly)',
         inputSchema: {
           type: 'object',
           properties: {
             pattern: { type: 'string', description: 'Search pattern (text or regex)' },
-            directory: { type: 'string', description: 'Directory to search in (default: project root)' },
-            filePattern: { type: 'string', description: 'File glob pattern (e.g., "*.ts", "**/*.js")' },
+            directory: { 
+              type: 'string', 
+              description: 'Directory to search in. Relative paths (e.g. "Assets/Scripts") resolve to project root, not MCP server root'
+            },
+            filePattern: { 
+              type: 'string', 
+              description: 'File glob pattern. Use "**/*.cs" for recursive search, "*.cs" for direct files only. Auto-detects for script directories.'
+            },
             excludePatterns: { 
               type: 'array', 
               items: { type: 'string' },
@@ -475,10 +481,28 @@ export class ToolHandler {
         // =============== CODE SEARCH ===============
         case 'search_code':
           const projectInfo = this.contextManager.getProjectInfo();
+          const projectRoot = projectInfo?.root || process.cwd();
+          
+          // FIX #1: Proper directory resolution
+          // If directory is relative, resolve it relative to PROJECT ROOT, not MCP server root
+          let searchDirectory = args.directory || projectRoot;
+          if (!path.isAbsolute(searchDirectory)) {
+            searchDirectory = path.resolve(projectRoot, searchDirectory);
+            console.error(`🔧 Resolved relative directory: ${args.directory} → ${searchDirectory}`);
+          }
+          
+          // FIX #2: Smart file pattern defaulting
+          // If user specifies a directory like "Assets/Scripts", make file pattern recursive by default
+          let filePattern = args.filePattern;
+          if (!filePattern && searchDirectory.includes('Scripts')) {
+            filePattern = '**/*.cs'; // Default to recursive CS search for script directories
+            console.error(`🔧 Auto-detected script directory, using recursive pattern: ${filePattern}`);
+          }
+          
           const searchOptions = {
             pattern: args.pattern,
-            directory: args.directory || projectInfo?.root || process.cwd(),
-            filePattern: args.filePattern,
+            directory: searchDirectory,
+            filePattern: filePattern,
             excludePatterns: args.excludePatterns,
             caseSensitive: args.caseSensitive || false,
             regex: args.regex || false,
@@ -487,6 +511,12 @@ export class ToolHandler {
             includeHidden: args.includeHidden || false,
             followSymlinks: args.followSymlinks || false
           };
+          
+          console.error(`🔍 Search executing with options:`, {
+            pattern: searchOptions.pattern,
+            directory: searchOptions.directory,
+            filePattern: searchOptions.filePattern
+          });
           
           const searchResults = await this.fileHandler.searchCode(searchOptions);
           

@@ -143,8 +143,21 @@ export class CodeSearcher {
   private async getFilesToSearch(options: SearchOptions): Promise<string[]> {
     const searchDir = path.resolve(options.directory);
     
-    // Default file pattern if not specified - search ALL files
-    const filePattern = options.filePattern || '**/*';
+    // 🚨 BUG FIX: Default file pattern MUST be recursive for parent directory searches
+    // OLD: '**/*' was correct but specific patterns like '*.cs' were not recursive
+    // NEW: If filePattern is provided and doesn't have **, make it recursive automatically
+    let filePattern = options.filePattern || '**/*';
+    
+    // Auto-fix non-recursive patterns to be recursive (*.cs -> **/*.cs)
+    if (filePattern && !filePattern.includes('**/') && !filePattern.startsWith('./')) {
+      // If pattern is like "*.cs", "*.js" etc, make it recursive
+      if (filePattern.match(/^\*\.\w+$/)) {
+        filePattern = `**/${filePattern}`;
+    console.error(`🔧 [CodeSearcher] Auto-fixed pattern: ${options.filePattern} → ${filePattern}`);
+      }
+    }
+    
+    console.error(`🔍 [CodeSearcher] Search config: dir="${searchDir}", pattern="${filePattern}"`);
     
     // Build glob options
     const globOptions = {
@@ -167,6 +180,8 @@ export class CodeSearcher {
 
     // Get files using glob
     let files = await glob(filePattern, globOptions);
+    
+    console.error(`🔍 [CodeSearcher] Glob found ${files.length} files with pattern "${filePattern}"`);
 
     // Filter with gitignore if available
     if (this.gitignore) {

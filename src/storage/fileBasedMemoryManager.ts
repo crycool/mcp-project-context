@@ -171,7 +171,12 @@ export class FileBasedMemoryManager {
   /**
    * Add new memory entry to project memory file
    */
-  async addMemory(content: string, tags: string[] = []): Promise<string> {
+  async addMemory(content: string, tags: string[] | null = []): Promise<string> {
+    // BUG FIX: Handle null tags parameter gracefully
+    if (tags === null || tags === undefined) {
+      tags = [];
+    }
+    
     const projectMemoryPath = path.join(this.projectRoot, 'CLAUDE.md');
     
     const timestamp = new Date().toISOString();

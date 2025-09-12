@@ -526,9 +526,20 @@ export class EnhancedToolHandler {
   }
 
   private async handleAddMemory(args: any): Promise<any> {
+    // BUG FIX: Enhanced null/undefined tags handling with clear error message
+    let tags = args.tags;
+    if (tags === null) {
+      tags = [];
+      console.warn('⚠️ add_memory: tags parameter was null, converted to empty array');
+    } else if (tags === undefined) {
+      tags = [];
+    } else if (!Array.isArray(tags)) {
+      throw new Error(`Invalid tags parameter: expected array or null, got ${typeof tags}. Use [] for empty tags.`);
+    }
+    
     const result = await this.contextManager.addMemory(
       args.content,
-      args.tags || []
+      tags
     );
     
     return {
