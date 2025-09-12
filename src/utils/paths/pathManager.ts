@@ -146,7 +146,7 @@ export class PathManager {
     if (exactDangerousPaths.includes(normalizedPath)) {
       return {
         isValid: false,
-        error: `Cannot operate on system directory: ${normalizedPath}`
+        error: `❌ Cannot operate on system directory: ${normalizedPath}. Please use a project directory instead.`
       };
     }
     
@@ -157,7 +157,7 @@ export class PathManager {
         if (normalizedPath.startsWith(forbidden)) {
           return {
             isValid: false,
-            error: `Path is in forbidden system directory: ${forbidden}`
+            error: `❌ Path is in forbidden system directory: ${forbidden}. System directories are protected for safety.`
           };
         }
       }
@@ -165,12 +165,12 @@ export class PathManager {
       else if (normalizedPath === forbidden || normalizedPath.startsWith(forbidden + path.sep)) {
         return {
           isValid: false,
-          error: `Path is in forbidden directory: ${forbidden}`
+          error: `❌ Path is in forbidden directory: ${forbidden}. This directory is not allowed in MCP configuration.`
         };
       }
     }
 
-    // Check allowed directories if specified
+    // Check allowed directories if specified - ENHANCED ERROR MESSAGE
     if (this.config.allowedDirectories.length > 0) {
       const isInAllowed = this.config.allowedDirectories.some(allowedDir =>
         normalizedPath.startsWith(path.resolve(allowedDir))
@@ -179,7 +179,10 @@ export class PathManager {
       if (!isInAllowed) {
         return {
           isValid: false,
-          error: `Path is not in allowed directories`
+          error: `❌ Path is not in allowed directories.\n\n` +
+                 `🎯 **Current Working Directory:** ${process.cwd()}\n` +
+                 `📂 **Allowed Directories:**\n${this.config.allowedDirectories.map(dir => `   • ${dir}`).join('\n')}\n\n` +
+                 `💡 **Solution:** Use set_working_directory to switch to an allowed project, or contact admin to add this directory to allowed list.`
         };
       }
     }
@@ -188,7 +191,7 @@ export class PathManager {
     if (normalizedPath.includes('..\\..\\') || normalizedPath.includes('../../')) {
       return {
         isValid: false,
-        error: `Potentially dangerous path detected`
+        error: `❌ Potentially dangerous path detected: ${normalizedPath}. Directory traversal patterns are not allowed for security.`
       };
     }
 

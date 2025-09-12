@@ -342,12 +342,21 @@ export class ConfigToolHandler {
         mcpConfig.incrementStat('workingDirChanges');
       }
 
+      // AUTO-FIX: Ensure new working directory is in allowed directories
+      const config = mcpConfig.getConfig();
+      if (!config.allowedDirectories.includes(resolvedPath)) {
+        const updatedAllowedDirs = [...config.allowedDirectories, resolvedPath];
+        mcpConfig.updateConfig('allowedDirectories', updatedAllowedDirs);
+        console.error(`✅ Auto-added new working directory to allowed directories: ${resolvedPath}`);
+      }
+
       return {
         success: true,
         message: `Changed working directory from ${oldDir} to ${resolvedPath}`,
         oldDirectory: oldDir,
         newDirectory: resolvedPath,
-        configUpdated: args.updateConfig !== false
+        configUpdated: args.updateConfig !== false,
+        allowedDirectoriesUpdated: !config.allowedDirectories.includes(resolvedPath)
       };
 
     } catch (error) {
@@ -476,6 +485,17 @@ export class ConfigToolHandler {
     }
 
     const success = await pathRecovery.emergencyReset();
+    
+    if (success) {
+      // AUTO-FIX: Ensure new working directory after emergency reset is in allowed directories
+      const newWorkingDir = process.cwd();
+      const config = mcpConfig.getConfig();
+      if (!config.allowedDirectories.includes(newWorkingDir)) {
+        const updatedAllowedDirs = [...config.allowedDirectories, newWorkingDir];
+        mcpConfig.updateConfig('allowedDirectories', updatedAllowedDirs);
+        console.error(`✅ Emergency: Auto-added new working directory to allowed directories: ${newWorkingDir}`);
+      }
+    }
     
     return {
       success,

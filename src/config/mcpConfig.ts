@@ -55,7 +55,7 @@ export const DEFAULT_MCP_CONFIG: MCPConfig = {
   backupDirectories: [],
   pathResolution: 'auto-correct',
   useRelativePaths: false,
-  allowedDirectories: [],
+  allowedDirectories: [process.cwd()], // AUTO-FIX: Include current working directory by default
   forbiddenPaths: [
     // Only block exact dangerous paths, not paths that contain them
     '/System',
@@ -161,6 +161,13 @@ export class MCPConfigManager {
       
     config.backupDirectories = config.backupDirectories.filter(dir => 
       fs.existsSync(dir));
+
+    // AUTO-FIX: Ensure current working directory is in allowed directories
+    const currentWD = process.cwd();
+    if (!config.allowedDirectories.includes(currentWD)) {
+      config.allowedDirectories.push(currentWD);
+      console.warn('🔧 Auto-added current working directory to allowed directories:', currentWD);
+    }
 
     // Update timestamp
     config.lastUpdated = new Date().toISOString();

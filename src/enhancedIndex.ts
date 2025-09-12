@@ -83,6 +83,19 @@ class EnhancedMCPProjectContextServer {
       const config = mcpConfig.getConfig();
       console.error(`✅ Configuration loaded from: ${mcpConfig.getConfigPath()}`);
 
+      // Step 1.5: AUTO-FIX: Ensure current working directory is in allowed directories
+      console.error('🔧 Ensuring working directory access...');
+      const currentWD = process.cwd();
+      
+      if (!config.allowedDirectories.includes(currentWD)) {
+        console.error(`➕ Adding current working directory to allowed directories: ${currentWD}`);
+        const updatedAllowedDirs = [...config.allowedDirectories, currentWD];
+        mcpConfig.updateConfig('allowedDirectories', updatedAllowedDirs);
+        console.error('✅ Working directory added to allowed directories');
+      } else {
+        console.error('✅ Working directory already in allowed directories');
+      }
+
       // Step 2: Detect and fix working directory
       console.error('🔍 Detecting and validating working directory...');
       const recovery = await pathRecovery.detectAndFixWorkingDirectory();
@@ -163,6 +176,17 @@ class EnhancedMCPProjectContextServer {
       // Reset to safe defaults
       await pathRecovery.emergencyReset();
       this.currentWorkingDirectory = process.cwd();
+      
+      // EMERGENCY AUTO-FIX: Ensure current working directory is in allowed directories
+      console.error('🔧 Emergency: Ensuring working directory access...');
+      const config = mcpConfig.getConfig();
+      
+      if (!config.allowedDirectories.includes(this.currentWorkingDirectory)) {
+        console.error(`➕ Emergency: Adding working directory to allowed directories: ${this.currentWorkingDirectory}`);
+        const updatedAllowedDirs = [...config.allowedDirectories, this.currentWorkingDirectory];
+        mcpConfig.updateConfig('allowedDirectories', updatedAllowedDirs);
+        console.error('✅ Emergency: Working directory added to allowed directories');
+      }
       
       // Initialize with minimal components
       this.projectDiscovery = new ProjectDiscovery(this.currentWorkingDirectory);

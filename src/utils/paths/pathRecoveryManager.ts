@@ -267,6 +267,14 @@ export class PathRecoveryManager {
       process.chdir(targetDir);
       report.actions.push(`Switched from ${oldDir} to ${targetDir}`);
       mcpConfig.incrementStat('workingDirChanges');
+
+      // AUTO-FIX: Ensure new working directory is in allowed directories
+      const config = mcpConfig.getConfig();
+      if (!config.allowedDirectories.includes(targetDir)) {
+        const updatedAllowedDirs = [...config.allowedDirectories, targetDir];
+        mcpConfig.updateConfig('allowedDirectories', updatedAllowedDirs);
+        report.actions.push(`Auto-added ${targetDir} to allowed directories`);
+      }
     } catch (error) {
       report.errors.push(`Failed to switch to ${targetDir}: ${error instanceof Error ? error.message : String(error)}`);
     }
@@ -285,6 +293,14 @@ export class PathRecoveryManager {
         process.chdir(fallbackPath);
         report.actions.push(`Emergency fallback to ${fallbackPath}`);
         report.warnings.push('Using emergency fallback directory');
+
+        // AUTO-FIX: Ensure fallback directory is in allowed directories
+        const config = mcpConfig.getConfig();
+        if (!config.allowedDirectories.includes(fallbackPath)) {
+          const updatedAllowedDirs = [...config.allowedDirectories, fallbackPath];
+          mcpConfig.updateConfig('allowedDirectories', updatedAllowedDirs);
+          report.actions.push(`Auto-added fallback ${fallbackPath} to allowed directories`);
+        }
         return;
       } catch (error) {
         report.warnings.push(`Failed fallback to ${fallbackPath}`);
@@ -443,15 +459,23 @@ export class PathRecoveryManager {
       const safeDir = await this.findActualProjectDirectory() || os.homedir();
       process.chdir(safeDir);
       
-      // Update config with safe values
+      // Update config with safe values and AUTO-ADD to allowed directories
       mcpConfig.updateConfig('workingDirectory', safeDir);
       mcpConfig.updateConfig('projectRoot', safeDir);
-      mcpConfig.updateConfig('allowedDirectories', [safeDir]);
+      
+      // AUTO-FIX: Ensure safe directory is in allowed directories
+      const config = mcpConfig.getConfig();
+      const updatedAllowedDirs = [...config.allowedDirectories];
+      if (!updatedAllowedDirs.includes(safeDir)) {
+        updatedAllowedDirs.push(safeDir);
+      }
+      mcpConfig.updateConfig('allowedDirectories', updatedAllowedDirs);
       
       // Clear path manager cache
       pathManager.clearCache();
       
       console.log(`✅ Emergency reset complete. Now in: ${safeDir}`);
+      console.log(`✅ Auto-added ${safeDir} to allowed directories`);
       return true;
       
     } catch (error) {

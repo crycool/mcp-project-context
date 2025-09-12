@@ -390,7 +390,20 @@ export class EnhancedToolHandler {
       ];
       
       if (configToolNames.includes(name)) {
-        return await this.configToolHandler.handleConfigToolCall(name, args);
+        const configResult = await this.configToolHandler.handleConfigToolCall(name, args);
+        
+        // Wrap config tool result in MCP response format
+        return {
+          content: [
+            {
+              type: 'text',
+              text: typeof configResult === 'object' ? 
+                    JSON.stringify(configResult, null, 2) : 
+                    String(configResult)
+            }
+          ],
+          isError: configResult?.error ? true : false
+        };
       }
       
       switch (name) {
